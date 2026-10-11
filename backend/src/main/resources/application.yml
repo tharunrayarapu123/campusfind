@@ -31,6 +31,15 @@ app:
     api-key: ${GEMINI_API_KEY:}
   cors:
     frontend-url: ${FRONTEND_URL:http://localhost:5173}
+  matching:
+    threshold: 50
+    weights:
+      block: 25
+      room: 25
+      category: 20
+      time: 10
+      text: 10
+      image: 10
 
 ---
 # Dev Profile (MySQL 8 Docker Container / Local MySQL Service)

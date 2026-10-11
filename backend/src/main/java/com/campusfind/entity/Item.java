@@ -79,6 +79,10 @@ public class Item {
     @Builder.Default
     private ItemStatus status = ItemStatus.OPEN;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean hidden = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();

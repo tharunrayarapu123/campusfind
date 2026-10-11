@@ -317,3 +317,78 @@ On validation or business logic exceptions:
   }
 }
 ```
+
+---
+
+## 📡 REST API Reference
+
+### 1. Authentication & User Profile (`/api/v1/auth`, `/api/v1/users`)
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| `POST` | `/api/v1/auth/register` | Public | Register student with `@college.edu` domain email |
+| `POST` | `/api/v1/auth/login` | Public | Authenticate student/admin and receive 24h JWT token |
+| `GET` | `/api/v1/auth/me` | Authenticated | Retrieve current user profile (including private info) |
+| `PUT` | `/api/v1/users/me` | Authenticated | Update user profile (`fullName`, `department`, `year`, `avatarUrl`, `phone`) |
+| `POST` | `/api/v1/users/me/change-password` | Authenticated | Change user password |
+
+### 2. Reference Data (`/api/v1`)
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| `GET` | `/api/v1/blocks` | Public / Cached | Retrieve campus blocks and their associated rooms |
+| `GET` | `/api/v1/categories` | Public / Cached | Retrieve item category enums and friendly display names |
+
+### 3. Media Upload (`/api/v1/uploads`)
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| `POST` | `/api/v1/uploads/image` | Authenticated | Upload multipart image (max 5MB, JPEG/PNG/WebP magic-byte validation). Cloudinary with local fallback |
+
+### 4. Items Management (`/api/v1/items`)
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| `POST` | `/api/v1/items` | Authenticated | Report a Lost or Found item (rate limited: 10 items/24h per user) |
+| `GET` | `/api/v1/items` | Authenticated | Paginated item search with filters (`type`, `category`, `blockId`, `roomId`, `status`, `keyword`, `mine=true`) |
+| `GET` | `/api/v1/items/{id}` | Authenticated | Get full details of an item (owner masked to `PublicUserDto`) |
+| `PUT` | `/api/v1/items/{id}` | Owner / Admin | Update item details (cannot update once `RETURNED`) |
+| `DELETE` | `/api/v1/items/{id}` | Owner / Admin | Delete an item |
+| `POST` | `/api/v1/items/{id}/report` | Authenticated | Report an item (auto-hidden if reports reach >= 3) |
+
+### 5. Smart Matches (`/api/v1/matches`)
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| `GET` | `/api/v1/matches` | Authenticated | List all matches involving items owned by the current user |
+| `GET` | `/api/v1/matches/{id}` | Participant | Retrieve details of a match (both items masked for privacy) |
+| `POST` | `/api/v1/matches/{id}/reject` | Participant | Reject a suggested match |
+
+---
+
+## 🧠 Smart Matching Engine (100 Points)
+
+When an item is created, an `@Async` job searches for opposite-type `OPEN` items within the last 30 days and computes a 100-point score:
+- **Block Match:** `25 points` (exact block match)
+- **Room Match:** `25 points` (exact room match in same block)
+- **Category Match:** `20 points` (exact category)
+- **Time Proximity:** `10 points` (sliding scale: 10 pts for $\le$ 24h, 7 pts for $\le$ 48h, 4 pts for $\le$ 7d, 2 pts for $\le$ 30d)
+- **Text Similarity:** `10 points` (Jaccard token overlap between titles and descriptions)
+- **Image Similarity:** `10 points` (pluggable `ImageSimilarityScorer`, defaults to 0 without AI embedding)
+
+**Threshold:** Items with $\ge 50$ points automatically create a `MatchEntity` record in `SUGGESTED` status and dispatch in-app notifications to both students.
+
+### Example Match Score Breakdown:
+```json
+{
+  "block": 25,
+  "room": 25,
+  "category": 20,
+  "time": 10,
+  "text": 8,
+  "image": 0,
+  "total": 88
+}
+```
+
+---
+
+## ⏰ Background Scheduled Jobs
+
+- **Nightly Expiration (`0 0 2 * * *`):** Closes all items remaining `OPEN` older than 30 days.
+- **Safety-Net Re-matching (`0 */10 * * * *`):** Every 10 minutes, verifies recent un-matched open items against new entries.

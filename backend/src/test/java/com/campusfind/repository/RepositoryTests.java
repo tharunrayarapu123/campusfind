@@ -102,19 +102,19 @@ class RepositoryTests {
 
         // 1. Filter by type = LOST
         Page<Item> lostItems = itemRepository.findItemsWithFilters(
-                ItemType.LOST, null, null, null, null, null, PageRequest.of(0, 10));
+                ItemType.LOST, null, null, null, null, null, null, false, PageRequest.of(0, 10));
         assertThat(lostItems.getContent()).extracting(Item::getId).contains(lostWatch.getId());
         assertThat(lostItems.getContent()).extracting(Item::getId).doesNotContain(foundBottle.getId());
 
         // 2. Filter by keyword = 'chronograph'
         Page<Item> keywordMatch = itemRepository.findItemsWithFilters(
-                null, null, null, null, null, "chronograph", PageRequest.of(0, 10));
+                null, null, null, null, null, "chronograph", null, false, PageRequest.of(0, 10));
         assertThat(keywordMatch.getContent()).hasSize(1);
         assertThat(keywordMatch.getContent().get(0).getTitle()).isEqualTo("Fossil Chronograph Watch");
 
         // 3. Filter by category = BOTTLE
         Page<Item> bottleItems = itemRepository.findItemsWithFilters(
-                null, ItemCategory.BOTTLE, null, null, null, null, PageRequest.of(0, 10));
+                null, ItemCategory.BOTTLE, null, null, null, null, null, false, PageRequest.of(0, 10));
         assertThat(bottleItems.getContent()).hasSize(1);
         assertThat(bottleItems.getContent().get(0).getTitle()).isEqualTo("Milton Water Bottle");
     }
@@ -176,7 +176,9 @@ class RepositoryTests {
                 ItemType.FOUND,
                 blockA.getId(),
                 ItemCategory.WATCH,
-                aliceLost.getId()
+                aliceLost.getId(),
+                aliceLost.getOwner().getId(),
+                LocalDateTime.now().minusDays(30)
         );
 
         assertThat(candidates).hasSize(2);

@@ -110,6 +110,13 @@
             <version>2.6.0</version>
         </dependency>
 
+        <!-- Cloudinary Image Upload SDK -->
+        <dependency>
+            <groupId>com.cloudinary</groupId>
+            <artifactId>cloudinary-http44</artifactId>
+            <version>1.39.0</version>
+        </dependency>
+
         <!-- Testing -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

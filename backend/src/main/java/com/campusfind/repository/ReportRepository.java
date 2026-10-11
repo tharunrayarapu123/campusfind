@@ -13,4 +13,6 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
     List<Report> findByItemId(Long itemId);
     List<Report> findByReporterIdOrderByCreatedAtDesc(Long reporterId);
     Page<Report> findAllByOrderByCreatedAtDesc(Pageable pageable);
+    boolean existsByItemIdAndReporterId(Long itemId, Long reporterId);
+    long countByItemId(Long itemId);
 }

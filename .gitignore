@@ -7,6 +7,9 @@
 powershell.cmd
 **/powershell.cmd
 test.txt
+uploads/
+backend/uploads/
+**/uploads/
 
 # Compiled class file
 *.class
