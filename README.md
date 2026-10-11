@@ -478,7 +478,47 @@ When an item is created, an `@Async` job searches for opposite-type `OPEN` items
 
 ---
 
-## ⏰ Background Scheduled Jobs
-
 - **Nightly Expiration (`0 0 2 * * *`):** Closes all items remaining `OPEN` older than 30 days.
 - **Safety-Net Re-matching (`0 */10 * * * *`):** Every 10 minutes, verifies recent un-matched open items against new entries.
+- **AI Embedding Healing (`0 */15 * * * *`):** Every 15 minutes, generates missing embeddings for items created in the last 48 hours (limit 20 per run) to recover from transient API outages.
+
+---
+
+## 🤖 Google Gemini AI Features (Step 4)
+
+CampusFind integrates **Google Gemini AI** (`gemini-1.5-flash` vision and `text-embedding-004` vector embeddings) via resilient Spring Boot REST client wrappers backed by Resilience4j retry and circuit breakers.
+
+### 1. Photo Analysis & Auto-Tagging (`POST /api/v1/ai/analyze-image`)
+- Multipart upload (max 5 MB, authentic magic byte verification for JPEG, PNG, WebP).
+- **Prompt Injection Defense:** Strict system prompt instructing the model to treat all visible text inside photos purely as passive data attributes.
+- **Sensitive Content Shield:** Automatically flags visible faces, student ID numbers, or personal phone numbers, returning a helpful warning so students can crop/blur sensitive details prior to posting.
+- **Rate Limit:** 20 analysis requests per user per hour (returns `429 Too Many Requests` when exceeded).
+- **Graceful Fallback:** Returns `503 Service Unavailable` with a friendly fallback notice if Gemini is disabled or recovering from a rate limit/circuit breaker trip.
+
+### 2. Semantic Image & Text Matching (`GeminiImageSimilarityScorer`)
+- Generates high-dimensional vector embeddings asynchronously for every posted item.
+- Calculates cosine similarity:
+  $$\text{Cosine Similarity} = \frac{A \cdot B}{\|A\| \cdot \|B\|}$$
+- Items with visual similarity $\ge 0.5$ earn scaled visual compatibility points up to the configured `imageWeight` (10 pts).
+- The detailed score breakdown tracks `imageCompared`, `rawSimilarity`, and matching explanations.
+
+### 3. Smart Search (`GET /api/v1/items/{id}/similar`)
+- Returns the top 5 open items of opposite type ranked by vector embedding similarity (or keyword/category token overlap fallback).
+- Strictly maintains student privacy: owner contact information (email and phone number) is completely masked.
+
+### 4. Actuator Health Indicator (`/actuator/health`)
+- Exposes real-time Gemini AI service status (`UP` / `UNKNOWN`), configured vision and embedding models, and `lastSuccessTime`.
+
+### 5. Configuring `GEMINI_API_KEY`
+To activate live Gemini AI calls in development or production:
+
+**PowerShell (Windows):**
+```powershell
+$env:GEMINI_API_KEY="AIzaSyYourActualGeminiApiKeyHere"
+```
+
+**Bash / Linux / macOS:**
+```bash
+export GEMINI_API_KEY="AIzaSyYourActualGeminiApiKeyHere"
+```
+

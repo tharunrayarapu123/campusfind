@@ -7,6 +7,7 @@ import com.campusfind.dto.response.ApiResponse;
 import com.campusfind.dto.response.ItemDetailDto;
 import com.campusfind.dto.response.ItemSummaryDto;
 import com.campusfind.dto.response.MatchResponseDto;
+import com.campusfind.dto.response.SimilarItemDto;
 import com.campusfind.entity.ItemCategory;
 import com.campusfind.entity.ItemStatus;
 import com.campusfind.entity.ItemType;
@@ -119,5 +120,16 @@ public class ItemController {
     ) {
         List<MatchResponseDto> matches = matchService.getMatchesForItem(id, userDetails.getUsername());
         return ResponseEntity.ok(ApiResponse.success(matches));
+    }
+
+    @GetMapping("/{id}/similar")
+    @Operation(summary = "Find top 5 open items of opposite type that are most similar by AI embedding or keywords")
+    public ResponseEntity<ApiResponse<List<SimilarItemDto>>> getSimilarItems(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        String email = (userDetails != null) ? userDetails.getUsername() : null;
+        List<SimilarItemDto> similarItems = itemService.findSimilarItems(id, email);
+        return ResponseEntity.ok(ApiResponse.success(similarItems));
     }
 }

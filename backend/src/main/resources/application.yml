@@ -27,8 +27,6 @@ app:
     allowed-email-domain: ${ALLOWED_EMAIL_DOMAIN:college.edu}
   cloudinary:
     url: ${CLOUDINARY_URL:}
-  gemini:
-    api-key: ${GEMINI_API_KEY:}
   cors:
     frontend-url: ${FRONTEND_URL:http://localhost:5173}
   matching:
@@ -40,6 +38,47 @@ app:
       time: 10
       text: 10
       image: 10
+
+# Gemini AI API Configuration
+gemini:
+  base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta}
+  api-key: ${GEMINI_API_KEY:}
+  vision-model: ${GEMINI_VISION_MODEL:gemini-1.5-flash}
+  embedding-model: ${GEMINI_EMBEDDING_MODEL:text-embedding-004}
+  timeout-seconds: ${GEMINI_TIMEOUT_SECONDS:15}
+  enabled: ${GEMINI_ENABLED:}
+
+# Actuator configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+
+# Resilience4j configurations for Gemini API
+resilience4j:
+  retry:
+    instances:
+      geminiClient:
+        max-attempts: 2
+        wait-duration: 500ms
+        retry-exceptions:
+          - org.springframework.web.client.HttpServerErrorException
+          - org.springframework.web.client.HttpClientErrorException.TooManyRequests
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+  circuitbreaker:
+    instances:
+      geminiClient:
+        sliding-window-size: 6
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 2
+
 
 ---
 # Dev Profile (MySQL 8 Docker Container / Local MySQL Service)

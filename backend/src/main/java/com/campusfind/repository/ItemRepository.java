@@ -82,6 +82,12 @@ public interface ItemRepository extends JpaRepository<Item, Long>, JpaSpecificat
     List<Item> findRecentItemsWithoutMatches(@Param("after") LocalDateTime after);
 
     /**
+     * AI Embedding healing job: items created within last 48h without an embedding
+     */
+    @Query("SELECT i FROM Item i WHERE i.createdAt >= :after AND (i.embedding IS NULL OR TRIM(i.embedding) = '') ORDER BY i.createdAt DESC")
+    List<Item> findRecentItemsWithoutEmbedding(@Param("after") LocalDateTime after, Pageable pageable);
+
+    /**
      * Admin stats counts
      */
     long countByType(ItemType type);
@@ -94,4 +100,6 @@ public interface ItemRepository extends JpaRepository<Item, Long>, JpaSpecificat
     List<Object[]> countItemsPerBlock();
 
     List<Item> findByOwnerIdOrderByCreatedAtDesc(Long ownerId);
+
+    List<Item> findByTypeAndStatusAndHiddenFalseAndIdNot(ItemType type, ItemStatus status, Long id);
 }

@@ -213,11 +213,9 @@ public class MatchingService {
                 item2.getTitle() + " " + (item2.getDescription() != null ? item2.getDescription() : "")
         );
 
-        // 6. Image similarity (up to 10 pts)
-        if (item1.getImageUrl() != null && item2.getImageUrl() != null) {
-            double imgSim = imageSimilarityScorer.computeSimilarity(item1.getImageUrl(), item2.getImageUrl());
-            scoreImage = (int) Math.round(imgSim * imageWeight);
-        }
+        // 6. Image / embedding similarity (up to imageWeight pts)
+        double imgSim = imageSimilarityScorer.computeSimilarity(item1, item2);
+        scoreImage = (int) Math.round(imgSim * imageWeight);
 
         int total = scoreBlock + scoreRoom + scoreCategory + scoreTime + scoreText + scoreImage;
         total = Math.min(100, Math.max(0, total));
@@ -229,6 +227,7 @@ public class MatchingService {
         breakdown.put("time", scoreTime);
         breakdown.put("text", scoreText);
         breakdown.put("image", scoreImage);
+        breakdown.putAll(imageSimilarityScorer.getBreakdownDetails(item1, item2));
         breakdown.put("total", total);
 
         return new MatchScoreResult(total, breakdown);

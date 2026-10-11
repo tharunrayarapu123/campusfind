@@ -5,6 +5,7 @@ import com.campusfind.dto.request.UpdateItemRequest;
 import com.campusfind.dto.response.ItemDetailDto;
 import com.campusfind.dto.response.ItemSummaryDto;
 import com.campusfind.dto.response.PublicUserDto;
+import com.campusfind.dto.response.SimilarItemDto;
 import com.campusfind.entity.*;
 import com.campusfind.exception.ApiException;
 import com.campusfind.exception.ResourceNotFoundException;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +34,8 @@ public class ItemService {
     private final RoomRepository roomRepository;
     private final ReportRepository reportRepository;
     private final MatchingService matchingService;
+    private final com.campusfind.service.ai.EmbeddingService embeddingService;
+    private final com.campusfind.service.ai.GeminiImageSimilarityScorer geminiImageSimilarityScorer;
 
     @Transactional
     public ItemDetailDto createItem(String userEmail, CreateItemRequest request) {
@@ -110,7 +114,10 @@ public class ItemService {
 
         Item savedItem = itemRepository.save(item);
 
-        // Run matching engine asynchronously
+        // Asynchronously generate embedding (which will re-run matching once complete)
+        embeddingService.generateAndSaveEmbeddingAsync(savedItem.getId());
+
+        // Run initial matching engine asynchronously
         matchingService.runMatchingAsync(savedItem.getId());
 
         return toDetailDto(savedItem);
@@ -318,5 +325,76 @@ public class ItemService {
                 .avatarUrl(user.getAvatarUrl())
                 .karmaPoints(user.getKarmaPoints())
                 .build();
+    }
+
+    @Transactional(readOnly = true)
+    public List<SimilarItemDto> findSimilarItems(Long itemId, String userEmail) {
+        Item target = itemRepository.findById(itemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Item", "id", itemId));
+
+        ItemType oppositeType = (target.getType() == ItemType.LOST) ? ItemType.FOUND : ItemType.LOST;
+        List<Item> candidates = itemRepository.findByTypeAndStatusAndHiddenFalseAndIdNot(oppositeType, ItemStatus.OPEN, target.getId());
+
+        List<Double> targetVec = (target.getEmbedding() != null && !target.getEmbedding().isBlank())
+                ? embeddingService.parseEmbedding(target.getEmbedding())
+                : java.util.Collections.emptyList();
+
+        List<SimilarItemDto> scored = new java.util.ArrayList<>();
+
+        for (Item candidate : candidates) {
+            double simScore = 0.0;
+            String reason;
+
+            List<Double> candVec = (candidate.getEmbedding() != null && !candidate.getEmbedding().isBlank())
+                    ? embeddingService.parseEmbedding(candidate.getEmbedding())
+                    : java.util.Collections.emptyList();
+
+            if (!targetVec.isEmpty() && !candVec.isEmpty()) {
+                simScore = geminiImageSimilarityScorer.calculateCosineSimilarity(targetVec, candVec);
+                reason = "AI embedding similarity match (" + Math.round(simScore * 100) + "%)";
+            } else {
+                // Fallback: keyword & category similarity
+                double score = 0.0;
+                if (target.getCategory() == candidate.getCategory()) {
+                    score += 0.5;
+                }
+                score += computeTextOverlap(
+                        target.getTitle() + " " + (target.getDescription() != null ? target.getDescription() : ""),
+                        candidate.getTitle() + " " + (candidate.getDescription() != null ? candidate.getDescription() : "")
+                ) * 0.5;
+                simScore = score;
+                reason = "Keyword and category similarity match";
+            }
+
+            if (simScore > 0.05) {
+                scored.add(SimilarItemDto.builder()
+                        .item(toSummaryDto(candidate))
+                        .similarityScore(Math.round(simScore * 100.0) / 100.0)
+                        .matchReason(reason)
+                        .build());
+            }
+        }
+
+        scored.sort((a, b) -> Double.compare(b.getSimilarityScore(), a.getSimilarityScore()));
+        return scored.stream().limit(5).toList();
+    }
+
+    private double computeTextOverlap(String t1, String t2) {
+        if (t1 == null || t2 == null) return 0.0;
+        java.util.Set<String> w1 = extractTokens(t1);
+        java.util.Set<String> w2 = extractTokens(t2);
+        if (w1.isEmpty() || w2.isEmpty()) return 0.0;
+        java.util.Set<String> intersect = new java.util.HashSet<>(w1);
+        intersect.retainAll(w2);
+        return (double) intersect.size() / Math.max(w1.size(), w2.size());
+    }
+
+    private java.util.Set<String> extractTokens(String text) {
+        String[] parts = text.toLowerCase().replaceAll("[^a-z0-9\\s]", " ").split("\\s+");
+        java.util.Set<String> set = new java.util.HashSet<>();
+        for (String p : parts) {
+            if (p.length() > 2) set.add(p);
+        }
+        return set;
     }
 }
