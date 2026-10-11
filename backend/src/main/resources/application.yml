@@ -1,0 +1,110 @@
+spring:
+  application:
+    name: campusfind-backend
+  profiles:
+    active: dev
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+server:
+  port: ${PORT:8081}
+
+# Application & Feature Custom Properties
+app:
+  jwt:
+    secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+  auth:
+    allowed-email-domain: ${ALLOWED_EMAIL_DOMAIN:college.edu}
+  cloudinary:
+    url: ${CLOUDINARY_URL:}
+  gemini:
+    api-key: ${GEMINI_API_KEY:}
+  cors:
+    frontend-url: ${FRONTEND_URL:http://localhost:5173}
+
+---
+# Dev Profile (MySQL 8 Docker Container / Local MySQL Service)
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/campusfind?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&characterEncoding=UTF-8}
+    username: ${DB_USERNAME:campususer}
+    password: ${DB_PASSWORD:campuspassword}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      initialization-fail-timeout: -1
+      connection-timeout: 3000
+  jpa:
+    database-platform: org.hibernate.dialect.MySQLDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: UTC
+    open-in-view: false
+  flyway:
+    enabled: ${FLYWAY_ENABLED:false}
+    baseline-on-migrate: true
+    baseline-version: "0"
+    locations: classpath:db/migration
+
+---
+# Standalone / Local Profile (In-Memory MySQL Mode for local dev testing without active Docker daemon)
+spring:
+  config:
+    activate:
+      on-profile: standalone
+  datasource:
+    url: jdbc:h2:mem:campusfind;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+  flyway:
+    enabled: false
+
+---
+# Prod Profile (Production Cloud / Clustered MySQL)
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.MySQLDialect
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+    open-in-view: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: "0"
+    locations: classpath:db/migration
