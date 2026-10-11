@@ -49,7 +49,7 @@ spring:
   jpa:
     database-platform: org.hibernate.dialect.MySQLDialect
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: true
     properties:
       hibernate:
@@ -58,7 +58,7 @@ spring:
           time_zone: UTC
     open-in-view: false
   flyway:
-    enabled: ${FLYWAY_ENABLED:false}
+    enabled: true
     baseline-on-migrate: true
     baseline-version: "0"
     locations: classpath:db/migration
@@ -77,10 +77,17 @@ spring:
   jpa:
     database-platform: org.hibernate.dialect.H2Dialect
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: validate
     show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+    open-in-view: false
   flyway:
-    enabled: false
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: "0"
+    locations: classpath:db/migration
 
 ---
 # Prod Profile (Production Cloud / Clustered MySQL)

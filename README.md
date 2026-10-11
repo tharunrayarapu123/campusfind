@@ -108,6 +108,123 @@ campusfind/
 
 ---
 
+## 🗄️ Database Architecture & Entity Relationship Diagram
+
+The database schema is managed via Flyway migrations (`V1__init.sql`, `V2__core_schema.sql`, `V3__seed_data.sql`) with strict Hibernate validation (`ddl-auto=validate`).
+
+```mermaid
+erDiagram
+    USERS ||--o{ ITEMS : "owns"
+    BLOCKS ||--o{ ROOMS : "contains"
+    BLOCKS ||--o{ ITEMS : "located_at"
+    ROOMS ||--o{ ITEMS : "located_in"
+    ITEMS ||--o{ MATCHES : "lost_item"
+    ITEMS ||--o{ MATCHES : "found_item"
+    MATCHES ||--o{ CLAIMS : "has"
+    USERS ||--o{ CLAIMS : "submits"
+    MATCHES ||--o{ CHAT_MESSAGES : "contains"
+    USERS ||--o{ CHAT_MESSAGES : "sends"
+    USERS ||--o{ NOTIFICATIONS : "receives"
+    ITEMS ||--o{ REPORTS : "flagged_in"
+    USERS ||--o{ REPORTS : "submits"
+
+    USERS {
+        bigint id PK
+        varchar full_name
+        varchar email UK
+        varchar password_hash
+        varchar phone
+        varchar department
+        int year
+        varchar avatar_url
+        int karma_points
+        varchar role
+        boolean banned
+        datetime created_at
+    }
+
+    BLOCKS {
+        bigint id PK
+        varchar name UK
+    }
+
+    ROOMS {
+        bigint id PK
+        bigint block_id FK
+        varchar name
+    }
+
+    ITEMS {
+        bigint id PK
+        bigint owner_id FK
+        varchar type
+        varchar title
+        text description
+        varchar category
+        bigint block_id FK
+        bigint room_id FK
+        datetime event_time
+        varchar image_url
+        json ai_tags
+        longtext embedding
+        varchar verification_question
+        boolean handed_to_office
+        double latitude
+        double longitude
+        varchar status
+        datetime created_at
+        datetime updated_at
+    }
+
+    MATCHES {
+        bigint id PK
+        bigint lost_item_id FK
+        bigint found_item_id FK
+        int score
+        json score_breakdown
+        varchar status
+        datetime created_at
+    }
+
+    CLAIMS {
+        bigint id PK
+        bigint match_id FK
+        bigint claimant_id FK
+        text answer
+        boolean approved
+        datetime created_at
+    }
+
+    CHAT_MESSAGES {
+        bigint id PK
+        bigint match_id FK
+        bigint sender_id FK
+        text body
+        varchar image_url
+        datetime created_at
+    }
+
+    NOTIFICATIONS {
+        bigint id PK
+        bigint user_id FK
+        varchar title
+        text body
+        varchar link
+        boolean is_read
+        datetime created_at
+    }
+
+    REPORTS {
+        bigint id PK
+        bigint item_id FK
+        bigint reporter_id FK
+        text reason
+        datetime created_at
+    }
+```
+
+---
+
 ## 🚀 Getting Started & Local Setup
 
 ### 1. Prerequisites
