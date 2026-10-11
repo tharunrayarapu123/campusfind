@@ -27,6 +27,7 @@ public class MatchingService {
     private final NotificationRepository notificationRepository;
     private final ImageSimilarityScorer imageSimilarityScorer;
     private final ObjectMapper objectMapper;
+    private final com.campusfind.service.EmailService emailService;
 
     @Value("${app.matching.threshold:50}")
     private int matchingThreshold;
@@ -145,6 +146,9 @@ public class MatchingService {
                             .link("/matches/" + savedMatch.getId())
                             .read(false)
                             .build());
+
+                    emailService.sendMatchNotification(lostItem.getOwner(), lostItem.getTitle(), savedMatch.getId());
+                    emailService.sendMatchNotification(foundItem.getOwner(), foundItem.getTitle(), savedMatch.getId());
 
                     log.info("Created match between lost item {} and found item {} with score {}",
                             lostItem.getId(), foundItem.getId(), result.totalScore);

@@ -15,4 +15,6 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
     Page<Report> findAllByOrderByCreatedAtDesc(Pageable pageable);
     boolean existsByItemIdAndReporterId(Long itemId, Long reporterId);
     long countByItemId(Long itemId);
+    @org.springframework.data.jpa.repository.Modifying
+    void deleteByItemId(Long itemId);
 }

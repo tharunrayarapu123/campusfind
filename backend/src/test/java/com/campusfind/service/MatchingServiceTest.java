@@ -31,6 +31,9 @@ class MatchingServiceTest {
     @Mock
     private NotificationRepository notificationRepository;
 
+    @Mock
+    private com.campusfind.service.EmailService emailService;
+
     private MatchingService matchingService;
 
     @BeforeEach
@@ -40,7 +43,8 @@ class MatchingServiceTest {
                 matchRepository,
                 notificationRepository,
                 new DefaultImageSimilarityScorer(),
-                new ObjectMapper()
+                new ObjectMapper(),
+                emailService
         );
         ReflectionTestUtils.setField(matchingService, "matchingThreshold", 50);
         ReflectionTestUtils.setField(matchingService, "blockWeight", 25);

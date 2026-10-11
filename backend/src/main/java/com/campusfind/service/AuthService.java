@@ -24,6 +24,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final com.campusfind.repository.MatchRepository matchRepository;
 
     @Value("${app.auth.allowed-email-domain:college.edu}")
     private String allowedEmailDomain;
@@ -96,10 +97,11 @@ public class AuthService {
     public UserResponse getCurrentUser(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ApiException("User profile not found", HttpStatus.NOT_FOUND));
-        return toUserResponse(user);
+        long returnsCount = matchRepository.countByFoundItemOwnerIdAndStatus(user.getId(), com.campusfind.entity.MatchStatus.RETURNED);
+        return toUserResponse(user, returnsCount);
     }
 
-    public static UserResponse toUserResponse(User user) {
+    public static UserResponse toUserResponse(User user, long returnsCount) {
         return UserResponse.builder()
                 .id(user.getId())
                 .fullName(user.getFullName())
@@ -111,7 +113,13 @@ public class AuthService {
                 .karmaPoints(user.getKarmaPoints())
                 .role(user.getRole())
                 .banned(user.isBanned())
+                .emailNotifications(user.isEmailNotifications())
+                .badges(com.campusfind.util.BadgeUtil.computeBadges(returnsCount))
                 .createdAt(user.getCreatedAt())
                 .build();
+    }
+
+    public static UserResponse toUserResponse(User user) {
+        return toUserResponse(user, 0);
     }
 }

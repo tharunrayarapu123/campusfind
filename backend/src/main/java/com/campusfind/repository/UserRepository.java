@@ -22,5 +22,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
      */
     List<User> findTop10ByBannedFalseOrderByKarmaPointsDesc();
 
+    List<User> findTop20ByBannedFalseOrderByKarmaPointsDesc();
+
     Page<User> findByBannedFalseOrderByKarmaPointsDesc(Pageable pageable);
+
+    @Query("SELECT u FROM User u WHERE LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%'))")
+    Page<User> searchUsers(@org.springframework.data.repository.query.Param("search") String search, Pageable pageable);
 }

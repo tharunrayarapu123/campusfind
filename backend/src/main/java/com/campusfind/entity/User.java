@@ -52,6 +52,10 @@ public class User {
     @Builder.Default
     private boolean banned = false;
 
+    @Column(name = "email_notifications", nullable = false)
+    @Builder.Default
+    private boolean emailNotifications = true;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();

@@ -20,6 +20,8 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final com.campusfind.repository.ItemRepository itemRepository;
+    private final com.campusfind.repository.MatchRepository matchRepository;
 
     @Transactional
     public UserResponse updateProfile(String email, UpdateUserRequest request) {
@@ -41,7 +43,59 @@ public class UserService {
         }
 
         User updatedUser = userRepository.save(user);
-        return AuthService.toUserResponse(updatedUser);
+        long returnsCount = matchRepository.countByFoundItemOwnerIdAndStatus(updatedUser.getId(), com.campusfind.entity.MatchStatus.RETURNED);
+        return AuthService.toUserResponse(updatedUser, returnsCount);
+    }
+
+    @Transactional
+    public UserResponse updateSettings(String email, com.campusfind.dto.request.UpdateSettingsRequest request) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
+
+        if (request.getEmailNotifications() != null) {
+            user.setEmailNotifications(request.getEmailNotifications());
+        }
+
+        User updatedUser = userRepository.save(user);
+        long returnsCount = matchRepository.countByFoundItemOwnerIdAndStatus(updatedUser.getId(), com.campusfind.entity.MatchStatus.RETURNED);
+        return AuthService.toUserResponse(updatedUser, returnsCount);
+    }
+
+    @Transactional(readOnly = true)
+    public com.campusfind.dto.response.UserStatsDto getUserStats(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
+
+        long postsCount = itemRepository.countByOwnerId(user.getId());
+        long returnsCount = matchRepository.countByFoundItemOwnerIdAndStatus(user.getId(), com.campusfind.entity.MatchStatus.RETURNED);
+        java.util.List<String> badges = com.campusfind.util.BadgeUtil.computeBadges(returnsCount);
+
+        return com.campusfind.dto.response.UserStatsDto.builder()
+                .postsCount(postsCount)
+                .returnsCount(returnsCount)
+                .karmaPoints(user.getKarmaPoints())
+                .badges(badges)
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.List<com.campusfind.dto.response.LeaderboardUserDto> getLeaderboard() {
+        java.util.List<User> topUsers = userRepository.findTop20ByBannedFalseOrderByKarmaPointsDesc();
+        return topUsers.stream()
+                .map(u -> {
+                    long returnsCount = matchRepository.countByFoundItemOwnerIdAndStatus(u.getId(), com.campusfind.entity.MatchStatus.RETURNED);
+                    return com.campusfind.dto.response.LeaderboardUserDto.builder()
+                            .id(u.getId())
+                            .fullName(u.getFullName())
+                            .department(u.getDepartment())
+                            .year(u.getYear())
+                            .avatarUrl(u.getAvatarUrl())
+                            .karmaPoints(u.getKarmaPoints())
+                            .returnsCount(returnsCount)
+                            .badges(com.campusfind.util.BadgeUtil.computeBadges(returnsCount))
+                            .build();
+                })
+                .collect(java.util.stream.Collectors.toList());
     }
 
     @Transactional

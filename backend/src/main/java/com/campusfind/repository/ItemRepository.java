@@ -88,5 +88,10 @@ public interface ItemRepository extends JpaRepository<Item, Long>, JpaSpecificat
 
     long countByStatus(ItemStatus status);
 
+    long countByOwnerId(Long ownerId);
+
+    @Query("SELECT b.name, COUNT(i) FROM Item i JOIN i.block b GROUP BY b.name")
+    List<Object[]> countItemsPerBlock();
+
     List<Item> findByOwnerIdOrderByCreatedAtDesc(Long ownerId);
 }

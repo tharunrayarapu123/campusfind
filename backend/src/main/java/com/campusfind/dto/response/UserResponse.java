@@ -23,5 +23,7 @@ public class UserResponse {
     private int karmaPoints;
     private Role role;
     private boolean banned;
+    private boolean emailNotifications;
+    private java.util.List<String> badges;
     private LocalDateTime createdAt;
 }

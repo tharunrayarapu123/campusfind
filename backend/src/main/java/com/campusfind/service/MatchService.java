@@ -37,6 +37,8 @@ public class MatchService {
     private final UserRepository userRepository;
     private final ItemService itemService;
     private final ObjectMapper objectMapper;
+    private final NotificationService notificationService;
+    private final EmailService emailService;
 
     @Transactional(readOnly = true)
     public Page<MatchResponseDto> getMyMatches(String userEmail, Pageable pageable) {
@@ -91,6 +93,62 @@ public class MatchService {
         log.info("Match ID {} rejected by user {}", id, user.getEmail());
 
         return toMatchResponseDto(updated, user.getId());
+    }
+
+    @Transactional
+    public MatchResponseDto markReturned(Long id, String userEmail) {
+        MatchEntity match = matchRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Match", "id", id));
+
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", userEmail));
+
+        boolean isLostOwner = match.getLostItem().getOwner().getId().equals(user.getId());
+        boolean isFoundOwner = match.getFoundItem().getOwner().getId().equals(user.getId());
+        boolean isAdmin = user.getRole() == Role.ADMIN;
+
+        if (!isLostOwner && !isFoundOwner && !isAdmin) {
+            throw new AccessDeniedException("You do not have permission to mark this match as returned");
+        }
+
+        if (match.getStatus() != MatchStatus.CONFIRMED) {
+            throw new ApiException("Only CONFIRMED matches can be marked as returned (current status: " + match.getStatus() + ")", HttpStatus.BAD_REQUEST);
+        }
+
+        match.setStatus(MatchStatus.RETURNED);
+        com.campusfind.entity.Item lost = match.getLostItem();
+        com.campusfind.entity.Item found = match.getFoundItem();
+        lost.setStatus(com.campusfind.entity.ItemStatus.RETURNED);
+        found.setStatus(com.campusfind.entity.ItemStatus.RETURNED);
+
+        itemRepository.save(lost);
+        itemRepository.save(found);
+
+        // Award +10 karma points to finder (only once per match)
+        User finder = found.getOwner();
+        finder.setKarmaPoints(finder.getKarmaPoints() + 10);
+        userRepository.save(finder);
+
+        MatchEntity savedMatch = matchRepository.save(match);
+
+        // Notify both users
+        notificationService.createNotification(
+                lost.getOwner(),
+                "Item Returned",
+                "Item '" + lost.getTitle() + "' has been successfully returned!",
+                "/matches/" + id
+        );
+        notificationService.createNotification(
+                finder,
+                "Karma Points Earned! (+10)",
+                "Item '" + found.getTitle() + "' has been marked returned. You earned +10 karma points!",
+                "/matches/" + id
+        );
+
+        emailService.sendItemReturnedNotification(lost.getOwner(), lost.getTitle(), id);
+        emailService.sendItemReturnedNotification(finder, found.getTitle(), id);
+
+        return toMatchResponseDto(savedMatch, user.getId());
     }
 
     @Transactional(readOnly = true)

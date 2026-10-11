@@ -43,6 +43,25 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success("Password changed successfully", null));
     }
 
+    @GetMapping("/me/stats")
+    @Operation(summary = "Get current user activity stats, karma, and badges")
+    public ResponseEntity<ApiResponse<com.campusfind.dto.response.UserStatsDto>> getMyStats(
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        var stats = userService.getUserStats(userDetails.getUsername());
+        return ResponseEntity.ok(ApiResponse.ok("User stats retrieved successfully", stats));
+    }
+
+    @PutMapping("/me/settings")
+    @Operation(summary = "Update user notification settings")
+    public ResponseEntity<ApiResponse<UserResponse>> updateSettings(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @Valid @RequestBody com.campusfind.dto.request.UpdateSettingsRequest request
+    ) {
+        UserResponse response = userService.updateSettings(userDetails.getUsername(), request);
+        return ResponseEntity.ok(ApiResponse.ok("Settings updated successfully", response));
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Fetch another user public profile (privacy rule: phone and email omitted)")
     public ResponseEntity<ApiResponse<PublicUserDto>> getPublicUser(@PathVariable Long id) {

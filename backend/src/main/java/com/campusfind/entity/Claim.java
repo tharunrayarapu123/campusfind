@@ -32,6 +32,10 @@ public class Claim {
     @Column
     private Boolean approved;
 
+    @Column(name = "is_office_claim", nullable = false)
+    @Builder.Default
+    private boolean officeClaim = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();

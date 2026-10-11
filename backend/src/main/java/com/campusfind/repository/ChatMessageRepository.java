@@ -17,6 +17,11 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
     List<ChatMessage> findByMatchIdOrderByCreatedAtAsc(Long matchId);
 
     /**
+     * Paginated chat history by match ordered by createdAt ascending
+     */
+    Page<ChatMessage> findByMatchIdOrderByCreatedAtAsc(Long matchId, Pageable pageable);
+
+    /**
      * Paginated chat history by match ordered by createdAt descending (for cursor pagination)
      */
     Page<ChatMessage> findByMatchIdOrderByCreatedAtDesc(Long matchId, Pageable pageable);

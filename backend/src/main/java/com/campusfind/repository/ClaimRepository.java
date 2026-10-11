@@ -9,6 +9,10 @@ import java.util.Optional;
 
 @Repository
 public interface ClaimRepository extends JpaRepository<Claim, Long> {
-    Optional<Claim> findByMatchId(Long matchId);
+    List<Claim> findByMatchIdOrderByCreatedAtAsc(Long matchId);
+    List<Claim> findByMatchIdOrderByCreatedAtDesc(Long matchId);
     List<Claim> findByClaimantIdOrderByCreatedAtDesc(Long claimantId);
+    long countByMatchIdAndClaimantId(Long matchId, Long claimantId);
+    long countByMatchId(Long matchId);
+    Optional<Claim> findTopByMatchIdOrderByCreatedAtDesc(Long matchId);
 }

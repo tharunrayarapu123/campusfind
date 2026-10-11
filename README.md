@@ -352,12 +352,102 @@ On validation or business logic exceptions:
 | `DELETE` | `/api/v1/items/{id}` | Owner / Admin | Delete an item |
 | `POST` | `/api/v1/items/{id}/report` | Authenticated | Report an item (auto-hidden if reports reach >= 3) |
 
-### 5. Smart Matches (`/api/v1/matches`)
+### 5. Smart Matches & Claims Verification (`/api/v1/matches`)
 | Method | Endpoint | Access | Description |
 |---|---|---|---|
 | `GET` | `/api/v1/matches` | Authenticated | List all matches involving items owned by the current user |
 | `GET` | `/api/v1/matches/{id}` | Participant | Retrieve details of a match (both items masked for privacy) |
 | `POST` | `/api/v1/matches/{id}/reject` | Participant | Reject a suggested match |
+| `GET` | `/api/v1/matches/{id}/verification` | Participant | View finder's verification question (or office pickup instructions) |
+| `POST` | `/api/v1/matches/{id}/claim` | Lost Owner | Submit answer to verification question (max 3 attempts, returns 429 on 4th) |
+| `GET` | `/api/v1/matches/{id}/claims` | Participant | View submitted claim answers |
+| `POST` | `/api/v1/matches/{id}/claims/{claimId}/approve` | Finder Only | Approve claim: Match becomes `CONFIRMED`, items `MATCHED`, competing matches `REJECTED`, chat unlocks |
+| `POST` | `/api/v1/matches/{id}/claims/{claimId}/reject` | Finder Only | Reject claim answer |
+| `POST` | `/api/v1/matches/{id}/claim-office` | Lost Owner | Submit office pickup proof when item has `handedToOffice = true` |
+| `POST` | `/api/v1/matches/{id}/returned` | Participant | Mark item returned: Sets status `RETURNED`, awards finder +10 karma points, chat becomes read-only |
+
+### 6. Realtime & REST Chat (`/api/v1/matches/{id}/messages`)
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| `POST` | `/api/v1/matches/{id}/messages` | Participant | Send message in match chat (HTTP fallback, max 1000 chars, max 30 msgs/min) |
+| `GET` | `/api/v1/matches/{id}/messages` | Participant | Get chat history (paginated, chronological oldest to newest) |
+| `POST` | `/api/v1/matches/{id}/messages/read` | Participant | Acknowledge/mark match messages as read |
+
+### 7. Notifications (`/api/v1/notifications`)
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| `GET` | `/api/v1/notifications` | Authenticated | Paginated list of current user's notifications |
+| `GET` | `/api/v1/notifications/unread-count` | Authenticated | Get unread notification badge count |
+| `POST` | `/api/v1/notifications/{id}/read` | Owner Only | Mark single notification as read |
+| `POST` | `/api/v1/notifications/read-all` | Authenticated | Mark all user notifications as read |
+
+### 8. User Stats, Settings & Leaderboard (`/api/v1/users`, `/api/v1/leaderboard`)
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| `GET` | `/api/v1/users/me/stats` | Authenticated | Returns posts count, return count, karma points, and earned badges |
+| `PUT` | `/api/v1/users/me/settings` | Authenticated | Update user preferences (`emailNotifications: true/false`) |
+| `GET` | `/api/v1/leaderboard` | Authenticated | Top 20 student leaderboard ranked by karma points and badges |
+
+### 9. Campus Admin Governance (`/api/v1/admin`) — `ROLE_ADMIN` Only
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| `GET` | `/api/v1/admin/stats` | Admin | Aggregate metrics: users, lost, found, returned, return rate %, items per block |
+| `GET` | `/api/v1/admin/reports` | Admin | Paginated list of community reports |
+| `POST` | `/api/v1/admin/reports/{itemId}/dismiss` | Admin | Dismiss/delete reports filed against an item |
+| `DELETE` | `/api/v1/admin/items/{id}` | Admin | Hard delete post (dispatches notification to owner) |
+| `GET` | `/api/v1/admin/users` | Admin | Paginated student/admin list with search query by name or email |
+| `POST` | `/api/v1/admin/users/{id}/ban` | Admin | Ban user account (prevents login; cannot ban admins or self) |
+| `POST` | `/api/v1/admin/users/{id}/unban` | Admin | Restore banned student account |
+| `POST` | `/api/v1/admin/items/{id}/unhide` | Admin | Unhide post that was auto-hidden by community reports |
+| `POST` | `/api/v1/admin/matches/{matchId}/claims/{claimId}/office-approve` | Admin | Approve office drop point claim proof |
+| `GET` | `/api/v1/admin/audit-logs` | Admin | Audit trail of administrative moderation actions |
+
+---
+
+## ⚡ Realtime WebSocket (STOMP) Guide
+
+- **WebSocket URL:** `ws://localhost:8081/ws` (with SockJS fallback `http://localhost:8081/ws`)
+- **Connection Authentication:** Include the JWT Bearer token in the STOMP `CONNECT` frame:
+  ```text
+  CONNECT
+  Authorization:Bearer <JWT_TOKEN>
+  accept-version:1.1,1.2
+  ```
+- **Destination Routing:**
+  - **Subscribe to Match Chat:** `/topic/match/{matchId}`
+    - *Authorization Rule:* Strictly permitted only for the two owners of a `CONFIRMED` or `RETURNED` match.
+  - **Send Message:** `/app/chat/{matchId}`
+    - *Authorization Rule:* Permitted only for owners of a `CONFIRMED` match. Chat is read-only after `RETURNED`.
+    - *Rate Limit:* Max 30 messages per minute per user.
+    - *Payload Structure:*
+      ```json
+      {
+        "body": "Hi, I have your watch! Let's meet at Block A.",
+        "imageUrl": null
+      }
+      ```
+
+---
+
+## 🔄 Lifecycle State Machine & Karma Badges
+
+```mermaid
+stateDiagram-v2
+    [*] --> OPEN: Student reports Lost or Found item
+    OPEN --> SUGGESTED: Matching Engine finds compatibility >= 50%
+    SUGGESTED --> CONFIRMED: Finder approves Claim Answer (or Admin approves Office Claim)
+    SUGGESTED --> REJECTED: User rejects match or another match confirmed
+    CONFIRMED --> RETURNED: Physical handoff complete (+10 karma to finder)
+    CONFIRMED --> REJECTED: Disputed handoff
+    RETURNED --> [*]
+```
+
+### Community Karma & Badge Rules
+- **Return Award:** Finder receives **+10 karma points** upon item return (awarded exactly once per match).
+- **Badges:** Dynamically computed from successful returns:
+  - 🥉 `FIRST_RETURN`: 1 return as finder
+  - 🥈 `HELPER`: 3 returns as finder
+  - 🥇 `TOP_FINDER`: 10 returns as finder
 
 ---
 
@@ -371,7 +461,7 @@ When an item is created, an `@Async` job searches for opposite-type `OPEN` items
 - **Text Similarity:** `10 points` (Jaccard token overlap between titles and descriptions)
 - **Image Similarity:** `10 points` (pluggable `ImageSimilarityScorer`, defaults to 0 without AI embedding)
 
-**Threshold:** Items with $\ge 50$ points automatically create a `MatchEntity` record in `SUGGESTED` status and dispatch in-app notifications to both students.
+**Threshold:** Items with $\ge 50$ points automatically create a `MatchEntity` record in `SUGGESTED` status and dispatch in-app notifications and transactional emails to both students.
 
 ### Example Match Score Breakdown:
 ```json

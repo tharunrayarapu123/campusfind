@@ -33,4 +33,11 @@ public interface MatchRepository extends JpaRepository<MatchEntity, Long> {
     Optional<MatchEntity> findByLostItemIdAndFoundItemId(Long lostItemId, Long foundItemId);
 
     boolean existsByLostItemIdAndFoundItemId(Long lostItemId, Long foundItemId);
+
+    long countByFoundItemOwnerIdAndStatus(Long finderId, MatchStatus status);
+
+    long countByStatus(MatchStatus status);
+
+    @Query("SELECT m FROM MatchEntity m WHERE m.status = 'SUGGESTED' AND (m.lostItem.id = :lostItemId OR m.foundItem.id = :foundItemId) AND m.id <> :excludeMatchId")
+    List<MatchEntity> findOtherSuggestedMatches(@Param("lostItemId") Long lostItemId, @Param("foundItemId") Long foundItemId, @Param("excludeMatchId") Long excludeMatchId);
 }
