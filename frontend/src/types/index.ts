@@ -208,3 +208,135 @@ export interface UpdateItemPayload {
   longitude?: number;
   verificationQuestion?: string;
 }
+
+export interface MatchResponseDto {
+  id: number;
+  lostItem: ItemSummary;
+  foundItem: ItemSummary;
+  score: number;
+  scoreBreakdown: MatchScoreBreakdown;
+  status: MatchStatus;
+  otherUser: PublicUser;
+  createdAt: string;
+}
+
+export interface VerificationQuestionResponse {
+  matchId: number;
+  verificationQuestion: string;
+  handedToOffice: boolean;
+  instructions?: string;
+}
+
+export interface ClaimResponse {
+  id: number;
+  matchId: number;
+  claimant: PublicUser;
+  answer: string;
+  approved: boolean | null;
+  officeClaim: boolean;
+  createdAt: string;
+}
+
+export interface ClaimRequest {
+  answer: string;
+}
+
+export interface OfficeClaimRequest {
+  proofDescription: string;
+}
+
+export interface ChatMessageDto {
+  id: number;
+  matchId: number;
+  sender: PublicUser;
+  body: string;
+  imageUrl?: string;
+  createdAt: string;
+}
+
+export interface SendChatMessagePayload {
+  body: string;
+  imageUrl?: string;
+}
+
+export interface NotificationDto {
+  id: number;
+  title: string;
+  body: string;
+  link?: string;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface UnreadCountDto {
+  unreadCount: number;
+}
+
+export interface LeaderboardUserDto {
+  id: number;
+  fullName: string;
+  department?: string;
+  year?: number;
+  avatarUrl?: string;
+  karmaPoints: number;
+  badges: string[];
+  returnsCount: number;
+}
+
+export interface UserStatsDto {
+  postsCount: number;
+  returnsCount: number;
+  karmaPoints: number;
+  badges: string[];
+}
+
+export interface UpdateUserRequest {
+  fullName: string;
+  department?: string;
+  year?: number;
+  phone?: string;
+  avatarUrl?: string;
+}
+
+export interface ChangePasswordRequest {
+  oldPassword?: string;
+  currentPassword?: string;
+  newPassword?: string;
+}
+
+export interface UpdateSettingsRequest {
+  emailNotifications: boolean;
+}
+
+export interface AdminStatsDto {
+  status: string;
+  totalUsers: number;
+  totalLost: number;
+  totalFound: number;
+  returned: number;
+  returnRatePercentage: number;
+  openItems: number;
+  matchesCount: number;
+  itemsPerBlock: Record<string, number>;
+}
+
+export interface ReportDto {
+  id: number;
+  itemId: number;
+  itemTitle: string;
+  reporter: PublicUser;
+  reason: string;
+  createdAt: string;
+}
+
+export interface AuditLogDto {
+  id: number;
+  adminId: number;
+  adminEmail: string;
+  action: string;
+  targetType: string;
+  targetId: number;
+  details: string;
+  createdAt: string;
+}
+

@@ -47,7 +47,6 @@ public class EmailService {
         }
     }
 
-    @Async
     public void sendMatchNotification(User recipient, String itemTitle, Long matchId) {
         if (recipient == null || !recipient.isEmailNotifications()) {
             return;
@@ -66,7 +65,6 @@ public class EmailService {
         sendEmail(recipient.getEmail(), subject, body);
     }
 
-    @Async
     public void sendClaimSubmittedNotification(User finder, String itemTitle, Long matchId) {
         if (finder == null || !finder.isEmailNotifications()) {
             return;
@@ -85,7 +83,6 @@ public class EmailService {
         sendEmail(finder.getEmail(), subject, body);
     }
 
-    @Async
     public void sendClaimDecisionNotification(User owner, String itemTitle, boolean approved, Long matchId) {
         if (owner == null || !owner.isEmailNotifications()) {
             return;
@@ -112,7 +109,6 @@ public class EmailService {
         sendEmail(owner.getEmail(), subject, body);
     }
 
-    @Async
     public void sendItemReturnedNotification(User recipient, String itemTitle, Long matchId) {
         if (recipient == null || !recipient.isEmailNotifications()) {
             return;

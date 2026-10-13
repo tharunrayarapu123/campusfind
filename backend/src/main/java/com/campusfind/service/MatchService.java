@@ -125,15 +125,19 @@ public class MatchService {
         itemRepository.save(found);
 
         // Award +10 karma points to finder (only once per match)
-        User finder = found.getOwner();
+        User finder = userRepository.findById(found.getOwner().getId())
+                .orElse(found.getOwner());
         finder.setKarmaPoints(finder.getKarmaPoints() + 10);
         userRepository.save(finder);
+
+        User lostOwner = userRepository.findById(lost.getOwner().getId())
+                .orElse(lost.getOwner());
 
         MatchEntity savedMatch = matchRepository.save(match);
 
         // Notify both users
         notificationService.createNotification(
-                lost.getOwner(),
+                lostOwner,
                 "Item Returned",
                 "Item '" + lost.getTitle() + "' has been successfully returned!",
                 "/matches/" + id

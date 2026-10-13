@@ -1,13 +1,24 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Compass, Moon, Sun, Bell, PlusCircle, LogOut } from 'lucide-react';
+import {
+  Compass,
+  Moon,
+  Sun,
+  Bell,
+  PlusCircle,
+  LogOut,
+  MapPin,
+  Trophy,
+  CheckCircle2,
+  ShieldAlert,
+} from 'lucide-react';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useDarkMode } from '../../hooks/useDarkMode';
 import { useUnreadNotificationsCount } from '../../hooks/useUnreadNotificationsCount';
 import { Button } from '../ui/Button';
 
 export const Navbar: React.FC = () => {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, logout, role } = useAuth();
   const { theme, toggleTheme } = useDarkMode();
   const { data: unreadCount = 0 } = useUnreadNotificationsCount();
   const navigate = useNavigate();
@@ -45,13 +56,47 @@ export const Navbar: React.FC = () => {
           >
             Home Feed
           </Link>
+          <Link
+            to="/map"
+            className="inline-flex items-center gap-1 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
+          >
+            <MapPin className="w-4 h-4 text-rose-500" />
+            Campus Map
+          </Link>
+          <Link
+            to="/leaderboard"
+            className="inline-flex items-center gap-1 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
+          >
+            <Trophy className="w-4 h-4 text-amber-500" />
+            Leaderboard
+          </Link>
+
           {isAuthenticated && (
+            <>
+              <Link
+                to="/matches"
+                className="inline-flex items-center gap-1 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
+              >
+                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                Matches
+              </Link>
+              <Link
+                to="/post"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
+              >
+                <PlusCircle className="w-4 h-4 text-brand-600" />
+                Post an Item
+              </Link>
+            </>
+          )}
+
+          {role === 'ADMIN' && (
             <Link
-              to="/post"
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
+              to="/admin"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/60 text-xs font-bold text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900 transition-colors"
             >
-              <PlusCircle className="w-4 h-4 text-brand-600" />
-              Post an Item
+              <ShieldAlert className="w-3.5 h-3.5" />
+              Admin
             </Link>
           )}
         </nav>
@@ -69,35 +114,40 @@ export const Navbar: React.FC = () => {
 
           {/* Notifications Bell (Logged in) */}
           {isAuthenticated && (
-            <div className="relative">
-              <button
-                aria-label="Notifications"
-                className="p-2.5 rounded-full text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors min-h-touch min-w-touch flex items-center justify-center"
-              >
-                <Bell className="w-5 h-5" />
-                {unreadCount > 0 && (
-                  <span className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center animate-pulse">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                )}
-              </button>
-            </div>
+            <Link
+              to="/notifications"
+              aria-label="Notifications"
+              className="relative p-2.5 rounded-full text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors min-h-touch min-w-touch flex items-center justify-center"
+            >
+              <Bell className="w-5 h-5" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center animate-pulse">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </Link>
           )}
 
           {/* Auth State */}
           {isAuthenticated ? (
             <div className="flex items-center gap-2.5 pl-2 sm:pl-3 border-l border-slate-200 dark:border-slate-800">
-              <div className="hidden sm:flex flex-col text-right">
-                <span className="text-sm font-semibold text-slate-900 dark:text-white leading-tight">
-                  {firstName}
-                </span>
-                <span className="text-xs text-brand-600 dark:text-brand-400 font-medium">
-                  {user?.karmaPoints ?? 0} pts
-                </span>
-              </div>
-              <div className="w-9 h-9 rounded-full bg-brand-100 dark:bg-brand-950 text-brand-700 dark:text-brand-300 font-bold flex items-center justify-center text-sm border border-brand-200 dark:border-brand-800 shrink-0">
-                {firstName.charAt(0).toUpperCase()}
-              </div>
+              <Link to="/profile" className="flex items-center gap-2.5 group">
+                <div className="hidden sm:flex flex-col text-right">
+                  <span className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors leading-tight">
+                    {firstName}
+                  </span>
+                  <span className="text-xs text-brand-600 dark:text-brand-400 font-medium">
+                    {user?.karmaPoints ?? 0} pts
+                  </span>
+                </div>
+                <div className="w-9 h-9 rounded-full bg-brand-100 dark:bg-brand-950 text-brand-700 dark:text-brand-300 font-bold flex items-center justify-center text-sm border border-brand-200 dark:border-brand-800 shrink-0 group-hover:scale-105 transition-transform overflow-hidden">
+                  {user?.avatarUrl ? (
+                    <img src={user.avatarUrl} alt={firstName} className="w-full h-full object-cover" />
+                  ) : (
+                    firstName.charAt(0).toUpperCase()
+                  )}
+                </div>
+              </Link>
               <button
                 onClick={handleLogout}
                 title="Log out"
@@ -126,3 +176,5 @@ export const Navbar: React.FC = () => {
     </header>
   );
 };
+
+export default Navbar;
