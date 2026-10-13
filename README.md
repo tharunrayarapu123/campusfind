@@ -522,3 +522,33 @@ $env:GEMINI_API_KEY="AIzaSyYourActualGeminiApiKeyHere"
 export GEMINI_API_KEY="AIzaSyYourActualGeminiApiKeyHere"
 ```
 
+---
+
+## 📱 Frontend Application (Step 5A)
+
+A mobile-first, calm, and accessible Progressive Web App (PWA) built with **React 18**, **TypeScript**, **Vite**, and **Tailwind CSS**.
+
+### 1. Features Implemented in Step 5A
+- **Design System & Tokens:** Indigo brand color (`#6366f1`), slate neutral palette, soft rounded cards (`rounded-card`), min 44px touch targets.
+- **Dark Mode:** Supports automatic system color scheme preference with persistent manual toggle.
+- **UI Kit:** Accessible `Button` (loading states), `Input` (password visibility toggle), `Select`, `Card`, `Badge` (types, statuses, matches), `Skeleton` loaders, `EmptyState`, and accessible `Modal`.
+- **Navigation:** Desktop sticky top navbar, mobile bottom tab bar (`Home`, `Post`, `Matches`, `Alerts`, `Profile`), unread alerts polling every 30s.
+- **Auth Flow (`/login`, `/register`):** Enforces `@college.edu` institutional emails, live password strength hints, phone privacy disclaimer, JWT storage, and automatic session restoration via `/auth/me`.
+- **Home Feed (`/`):** Instant search with 350ms debounce, category & location filters (desktop sidebar & mobile bottom sheet), tab filtering (`All`, `Lost`, `Found`), relative time tags, masked user names, and pagination.
+- **Post Item Wizard (`/post`):** 2-step flow with drag-and-drop photo upload, Gemini Vision auto-fill with loading shimmer, sensitive content privacy shield, and claim challenge questions for found items.
+- **Item Details (`/items/:id`):** Full photo, lifecycle timeline, suggested matches with 100-point compatibility score rings and breakdown bars, report/delete moderation modals, and AI similarity recommendations.
+
+### 2. Running the Frontend
+In `/frontend`:
+```bash
+npm install
+npm run dev
+```
+The frontend starts on **`http://localhost:5173`** and automatically proxies API requests to the backend running on port **`8081`**.
+
+Production build verification:
+```bash
+npm run build
+```
+
+

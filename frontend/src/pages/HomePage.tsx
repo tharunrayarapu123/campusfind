@@ -1,237 +1,315 @@
-import React, { useEffect, useState } from 'react';
-import { checkBackendHealth } from '../services/api';
-import { HealthCheckResponse } from '../types';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import {
-  CheckCircle2,
-  Database,
-  Server,
-  Layers,
-  ArrowRight,
-  ShieldCheck,
-  Cpu,
-  MessageSquare,
-  Award,
+  Search,
+  SlidersHorizontal,
+  Plus,
   RefreshCw,
-  Clock
+  X,
 } from 'lucide-react';
+import { itemsApi } from '../api/items';
+import { referenceApi } from '../api/reference';
+import type { ItemType, ItemSummary } from '../types';
+import { ItemCard } from '../features/items/ItemCard';
+import { ItemFilters, type FilterState } from '../features/items/ItemFilters';
+import { Button } from '../components/ui/Button';
+import { Skeleton } from '../components/ui/Skeleton';
+import { EmptyState } from '../components/ui/EmptyState';
 
 export const HomePage: React.FC = () => {
-  const [health, setHealth] = useState<HealthCheckResponse | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'ALL' | 'LOST' | 'FOUND'>('ALL');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [debouncedKeyword, setDebouncedKeyword] = useState<string>('');
+  const [filters, setFilters] = useState<FilterState>({});
+  const [page, setPage] = useState<number>(0);
+  const [items, setItems] = useState<ItemSummary[]>([]);
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState<boolean>(false);
 
-  const fetchHealth = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await checkBackendHealth();
-      if (res.success && res.data) {
-        setHealth(res.data);
+  // Debounce search query
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedKeyword(searchQuery.trim());
+      setPage(0);
+    }, 350);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  // Fetch reference blocks & categories
+  const { data: blocks = [] } = useQuery({
+    queryKey: ['referenceBlocks'],
+    queryFn: referenceApi.getBlocks,
+    staleTime: 1000 * 60 * 10,
+  });
+
+  const { data: categories = [] } = useQuery({
+    queryKey: ['referenceCategories'],
+    queryFn: referenceApi.getCategories,
+    staleTime: 1000 * 60 * 10,
+  });
+
+  // Query items feed
+  const itemTypeParam: ItemType | undefined = activeTab === 'ALL' ? undefined : activeTab;
+
+  const {
+    data: itemsPage,
+    isLoading,
+    isFetching,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ['itemsFeed', itemTypeParam, debouncedKeyword, filters, page],
+    queryFn: () =>
+      itemsApi.getItems({
+        type: itemTypeParam,
+        keyword: debouncedKeyword || undefined,
+        category: filters.category,
+        blockId: filters.blockId,
+        roomId: filters.roomId,
+        status: filters.status,
+        page,
+        size: 12,
+      }),
+  });
+
+  // Accumulate items for pagination
+  useEffect(() => {
+    if (itemsPage?.content) {
+      if (page === 0) {
+        setItems(itemsPage.content);
       } else {
-        setError(res.message || 'Failed to get healthy response');
+        setItems((prev) => [...prev, ...itemsPage.content]);
       }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Unable to connect to backend server');
-    } finally {
-      setLoading(false);
     }
+  }, [itemsPage, page]);
+
+  const handleTabChange = (tab: 'ALL' | 'LOST' | 'FOUND') => {
+    setActiveTab(tab);
+    setPage(0);
   };
 
-  useEffect(() => {
-    fetchHealth();
-  }, []);
+  const handleFilterChange = (newFilters: FilterState) => {
+    setFilters(newFilters);
+    setPage(0);
+  };
 
-  const steps = [
-    { num: 1, title: 'Setup & Monorepo Architecture', status: 'In Progress', active: true },
-    { num: 2, title: 'Auth & College Domain JWT', status: 'Upcoming', active: false },
-    { num: 3, title: 'Lost & Found Postings + AI Auto-tag', status: 'Upcoming', active: false },
-    { num: 4, title: 'Smart 100-Point Matching Engine', status: 'Upcoming', active: false },
-    { num: 5, title: 'Real-time Chat & Claim Verification', status: 'Upcoming', active: false },
-    { num: 6, title: 'Karma, Map Drop Points & Admin', status: 'Upcoming', active: false },
-  ];
+  const handleClearFilters = () => {
+    setFilters({});
+    setPage(0);
+  };
+
+  const hasNextPage = itemsPage ? !itemsPage.last : false;
+  const activeFilterCount = Object.values(filters).filter(Boolean).length;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
-      {/* Hero Banner */}
-      <section className="bg-gradient-to-br from-indigo-900 via-indigo-800 to-slate-900 rounded-2xl p-8 sm:p-10 text-white shadow-xl relative overflow-hidden">
-        <div className="relative z-10 max-w-3xl space-y-4">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-indigo-500/30 text-indigo-200 text-xs font-semibold backdrop-blur">
-            <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
-            <span>CampusFind Foundation • Step 1 of 6</span>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
+      {/* Top Header & Search Bar */}
+      <div className="flex flex-col gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+              Campus Lost & Found
+            </h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+              Discover and match lost belongings across campus facilities
+            </p>
           </div>
-          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight">
-            Connecting Lost Items to Owners with Privacy-First Matching.
-          </h1>
-          <p className="text-indigo-200 text-sm sm:text-base leading-relaxed">
-            Eliminating scattered group chats and public privacy risks. Designed specifically for college campuses
-            with room-level spatial matching, smart AI tagging, and verified claim handoffs.
-          </p>
-        </div>
-      </section>
 
-      {/* Backend & MySQL Connectivity Card */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-6 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="p-2.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400">
-                <Server className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-sm">Spring Boot 3 API</h3>
-                <p className="text-xs text-slate-500">Java 21 Backend</p>
-              </div>
-            </div>
+          <Link to="/post" className="hidden sm:inline-block">
+            <Button variant="primary" className="shadow-sm">
+              <Plus className="w-4 h-4 mr-1.5" /> Post Item
+            </Button>
+          </Link>
+        </div>
+
+        {/* Search Input & Mobile Filter Button */}
+        <div className="flex items-center gap-2.5">
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search items by title or description..."
+              className="w-full min-h-touch rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 pl-10 pr-10 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          <button
+            onClick={() => setIsMobileFilterOpen(true)}
+            className="lg:hidden flex items-center justify-center gap-1.5 min-h-touch px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+          >
+            <SlidersHorizontal className="w-4 h-4 text-brand-600" />
+            <span className="hidden sm:inline">Filters</span>
+            {activeFilterCount > 0 && (
+              <span className="w-5 h-5 rounded-full bg-brand-600 text-white text-[11px] font-bold flex items-center justify-center">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Tabs: ALL, LOST, FOUND */}
+        <div className="flex border-b border-slate-200 dark:border-slate-800 gap-6 text-sm font-medium">
+          {(['ALL', 'LOST', 'FOUND'] as const).map((tab) => (
             <button
-              onClick={fetchHealth}
-              disabled={loading}
-              title="Refresh Health"
-              className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 transition-colors"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
-
-          <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60">
-            {loading ? (
-              <p className="text-xs text-slate-400 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
-                Checking backend health...
-              </p>
-            ) : error ? (
-              <div className="text-xs text-rose-500 bg-rose-50 dark:bg-rose-950/40 p-2.5 rounded-lg">
-                Backend offline or starting up ({error})
-              </div>
-            ) : (
-              <div className="space-y-1.5 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Status:</span>
-                  <span className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> {health?.status}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Active Profile:</span>
-                  <span className="font-mono text-slate-700 dark:text-slate-300">{health?.activeProfile}</span>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-6 shadow-sm space-y-4">
-          <div className="flex items-center space-x-3">
-            <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400">
-              <Database className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-sm">MySQL 8 Database</h3>
-              <p className="text-xs text-slate-500">Dockerized Container</p>
-            </div>
-          </div>
-
-          <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60">
-            {loading ? (
-              <p className="text-xs text-slate-400">Checking database connection...</p>
-            ) : error ? (
-              <p className="text-xs text-slate-400">Database check pending backend restart</p>
-            ) : (
-              <div className="space-y-1.5 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Database:</span>
-                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                    {health?.databaseStatus.includes('CONNECTED') ? 'CONNECTED' : 'DISCONNECTED'}
-                  </span>
-                </div>
-                <p className="text-[11px] font-mono text-slate-500 truncate" title={health?.databaseStatus}>
-                  {health?.databaseStatus}
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-6 shadow-sm space-y-4">
-          <div className="flex items-center space-x-3">
-            <div className="p-2.5 rounded-lg bg-violet-50 dark:bg-violet-950/70 text-violet-600 dark:text-violet-400">
-              <Layers className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-sm">Frontend Client</h3>
-              <p className="text-xs text-slate-500">Vite + React + Tailwind</p>
-            </div>
-          </div>
-
-          <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 space-y-1.5 text-xs">
-            <div className="flex justify-between">
-              <span className="text-slate-500">Vite Dev Server:</span>
-              <span className="font-semibold text-emerald-600 dark:text-emerald-400">ONLINE</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500">API Proxy Target:</span>
-              <span className="font-mono text-slate-700 dark:text-slate-300">http://localhost:8080</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Six Step Implementation Roadmap */}
-      <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-6 shadow-sm space-y-6">
-        <div>
-          <h2 className="text-lg font-bold">CampusFind Architecture Roadmap</h2>
-          <p className="text-xs text-slate-500">Step-by-step full-stack engineering plan</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {steps.map((step) => (
-            <div
-              key={step.num}
-              className={`p-4 rounded-xl border transition-all ${
-                step.active
-                  ? 'border-indigo-500 bg-indigo-50/40 dark:bg-indigo-950/30'
-                  : 'border-slate-200 dark:border-slate-700 opacity-70'
+              key={tab}
+              onClick={() => handleTabChange(tab)}
+              className={`pb-3 relative transition-colors ${
+                activeTab === tab
+                  ? 'text-brand-600 dark:text-brand-400 font-semibold'
+                  : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
               }`}
             >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-                  Step {step.num}
-                </span>
-                <span className={`text-xs font-medium ${step.active ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}`}>
-                  {step.status}
-                </span>
-              </div>
-              <h4 className="font-medium text-sm text-slate-800 dark:text-slate-200">{step.title}</h4>
-            </div>
+              {tab === 'ALL' ? 'All Items' : tab === 'LOST' ? 'Lost Items' : 'Found Items'}
+              {activeTab === tab && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-600 dark:bg-brand-400 rounded-full" />
+              )}
+            </button>
           ))}
         </div>
-      </section>
+      </div>
 
-      {/* Feature Architecture Preview */}
-      <section className="space-y-4">
-        <h2 className="text-lg font-bold">Planned Capabilities</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-2">
-            <Cpu className="w-5 h-5 text-indigo-500" />
-            <h4 className="font-semibold text-sm">Smart Match (100 pts)</h4>
-            <p className="text-xs text-slate-500">Classroom block, room, category, timestamps & photo similarity score.</p>
+      {/* Main Grid & Desktop Sidebar Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        {/* Desktop Sidebar Filters */}
+        <aside className="hidden lg:block lg:col-span-1">
+          <div className="sticky top-20 bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/90 dark:border-slate-800 shadow-soft">
+            <ItemFilters
+              filters={filters}
+              onChange={handleFilterChange}
+              blocks={blocks}
+              categories={categories}
+              onClear={handleClearFilters}
+            />
           </div>
-          <div className="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-2">
-            <MessageSquare className="w-5 h-5 text-emerald-500" />
-            <h4 className="font-semibold text-sm">Private In-App Chat</h4>
-            <p className="text-xs text-slate-500">Only matched students can talk. Contact numbers and emails stay confidential.</p>
-          </div>
-          <div className="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-2">
-            <ShieldCheck className="w-5 h-5 text-violet-500" />
-            <h4 className="font-semibold text-sm">Claim Verification</h4>
-            <p className="text-xs text-slate-500">Finder asks security question before handing over item to rightful owner.</p>
-          </div>
-          <div className="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-2">
-            <Award className="w-5 h-5 text-amber-500" />
-            <h4 className="font-semibold text-sm">Karma & Leaderboard</h4>
-            <p className="text-xs text-slate-500">Rewarded badges and reputation for honest finders returning items.</p>
+        </aside>
+
+        {/* Items Grid Content */}
+        <div className="lg:col-span-3">
+          {/* Error State */}
+          {isError && (
+            <div className="p-6 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-center my-6">
+              <h3 className="text-base font-semibold text-rose-800 dark:text-rose-200 mb-1">
+                Unable to load items
+              </h3>
+              <p className="text-sm text-rose-600 dark:text-rose-400 mb-4">
+                {error instanceof Error ? error.message : 'Please check your connection.'}
+              </p>
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
+                <RefreshCw className="w-4 h-4 mr-1.5" /> Try Again
+              </Button>
+            </div>
+          )}
+
+          {/* Loading Skeletons */}
+          {isLoading && page === 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-0 overflow-hidden"
+                >
+                  <Skeleton className="aspect-[4/3] w-full" />
+                  <div className="p-4 space-y-3">
+                    <Skeleton className="h-5 w-3/4 rounded-md" />
+                    <Skeleton className="h-4 w-full rounded-md" />
+                    <div className="pt-2 flex justify-between">
+                      <Skeleton className="h-4 w-1/3 rounded-md" />
+                      <Skeleton className="h-4 w-1/4 rounded-md" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Empty State */}
+          {!isLoading && !isError && items.length === 0 && (
+            <EmptyState
+              title="No items found"
+              description={
+                debouncedKeyword || activeFilterCount > 0
+                  ? 'No items matched your current search filters. Try adjusting keywords or clearing filters.'
+                  : 'No items posted yet in this category. Be the first to report a lost or found item.'
+              }
+              actionText="Post an Item"
+              onAction={() => (window.location.href = '/post')}
+            />
+          )}
+
+          {/* Items Grid */}
+          {!isLoading && items.length > 0 && (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
+                {items.map((item) => (
+                  <ItemCard key={item.id} item={item} />
+                ))}
+              </div>
+
+              {/* Load More Button */}
+              {hasNextPage && (
+                <div className="mt-8 text-center">
+                  <Button
+                    variant="secondary"
+                    isLoading={isFetching && page > 0}
+                    onClick={() => setPage((prev) => prev + 1)}
+                    className="min-w-[160px]"
+                  >
+                    Load More Items
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Floating Action Button (Mobile Only) */}
+      <Link
+        to="/post"
+        aria-label="Post an item"
+        className="sm:hidden fixed bottom-20 right-5 z-30 w-14 h-14 rounded-full bg-brand-600 text-white shadow-elevated flex items-center justify-center hover:bg-brand-700 active:scale-95 transition-all"
+      >
+        <Plus className="w-7 h-7" />
+      </Link>
+
+      {/* Mobile Filters Bottom Sheet */}
+      {isMobileFilterOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden flex flex-col justify-end">
+          <div
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
+            onClick={() => setIsMobileFilterOpen(false)}
+          />
+          <div className="relative bg-white dark:bg-slate-900 rounded-t-3xl p-6 border-t border-slate-200 dark:border-slate-800 max-h-[85vh] overflow-y-auto shadow-2xl z-10 animate-in slide-in-from-bottom duration-200">
+            <ItemFilters
+              filters={filters}
+              onChange={handleFilterChange}
+              blocks={blocks}
+              categories={categories}
+              onClear={handleClearFilters}
+            />
+            <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <Button
+                variant="primary"
+                className="w-full"
+                onClick={() => setIsMobileFilterOpen(false)}
+              >
+                Apply Filters
+              </Button>
+            </div>
           </div>
         </div>
-      </section>
+      )}
     </div>
   );
 };
