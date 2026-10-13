@@ -551,4 +551,59 @@ Production build verification:
 npm run build
 ```
 
+---
+
+## ⚡ Frontend Part 2: Matches, Claims, Realtime Chat & Governance (Step 5B)
+
+The second frontend phase completes the full user journey: from match discovery and challenge-based ownership verification to secure real-time messaging, map exploration, karma achievements, and administrative governance.
+
+### 1. Features Implemented in Step 5B
+- **My Matches (`/matches`):**
+  - Tabbed overview (`All`, `Suggested`, `Confirmed`, `Returned`, `Rejected`).
+  - Dual-item cards with photos, dynamic score ring (colored by confidence), status badges, and privacy-safe student profiles (first name and department only).
+  - Quick action buttons to verify ownership or jump directly into chat when confirmed.
+- **Match Detail & Verification Flow (`/matches/:id`):**
+  - Side-by-side item comparison with score breakdown bars (Category, Block, Room, Time, Text, AI Vision).
+  - Four-stage visual lifecycle timeline (`Suggested` ➔ `Claim & Verify` ➔ `Confirmed` ➔ `Returned`).
+  - **Lost Item Owner:** Sees the finder's challenge question, remaining attempts counter (max 3), and answer submission form; or campus office custody instructions when handed to security.
+  - **Finder:** Reviews incoming claim answers and approves or rejects with confirmation dialogs. Approval unlocks chat and marks both items matched.
+  - **Mark Returned & Karma:** Either owner can confirm physical handover with a modal, rewarding +10 karma points to the finder.
+- **Realtime WebSocket Chat (`/chat/:matchId`):**
+  - STOMP client over SockJS connecting to `/ws` with JWT in CONNECT headers, subscribing to `/topic/match/:matchId`.
+  - Pinned campus safety tips advising students to meet in public, well-lit university locations.
+  - WhatsApp-style chat bubbles (right for sender, left for matched student), avatar initials, and timestamps.
+  - Image sharing with inline uploads via `/uploads/image`.
+  - Sliding-window rate limit guard (30 msgs/min) and automatic REST HTTP fallback.
+  - Archived read-only state when a match is returned.
+- **Notifications Center (`/notifications`):**
+  - Paginated list with unread indicator dots and light brand background.
+  - One-click navigation to the matching entity (items, matches, claims).
+  - "Mark all as read" button synced with the navbar notification bell badge.
+- **Student Profile & Karma (`/profile`):**
+  - Profile editor: full name, department, year of study, phone, and avatar upload.
+  - "My Posts" tab with subfilters (`All`, `Open`, `Matched`, `Returned`) and quick management actions.
+  - Karma points display with achievement badges (`First Return`, `Campus Helper`, `Top Finder`).
+  - Activity statistics: total items posted, items returned, and success rate.
+  - Email notification preference toggle and change password modal.
+  - PWA install prompt button.
+- **Community Leaderboard (`/leaderboard`):**
+  - Top 20 helpers ranked by karma points and return achievements.
+  - Gold, silver, and bronze podium cards for the top 3 helpers.
+  - Highlighted card for current student's rank.
+- **Campus Map (`/map`):**
+  - Interactive Leaflet map centered on campus blocks with OpenStreetMap tiles.
+  - Custom color-coded pins: rose for lost items, emerald for found items.
+  - Popups displaying thumbnail, title, category, date, and link to item details.
+  - Fallback list view for accessibility and low-bandwidth connections.
+- **Campus Moderation Console (`/admin`):**
+  - Protected by `AdminRoute` (accessible only to `ROLE_ADMIN`).
+  - Aggregate statistics: total users, lost vs. found items, return recovery rate, open items, and AI matches.
+  - Interactive Recharts bar chart showing items distribution across campus buildings.
+  - Moderation tabs: reports queue (dismiss/delete), user governance (search, ban, unban), office claim approvals, and audit trail logs.
+- **PWA Configuration:**
+  - `vite-plugin-pwa` integration with web manifest, standalone display mode, and custom SVG app icons.
+  - Offline status banner detecting network disconnections.
+  - Dynamic route document titles.
+
+
 
