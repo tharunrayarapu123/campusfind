@@ -50,7 +50,11 @@ export function useMatchChat({ matchId, onNewMessage }: UseMatchChatProps) {
     const wsUrl = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/ws` : '/ws';
 
     const client = new Client({
-      webSocketFactory: () => new SockJS(wsUrl),
+      webSocketFactory: () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const Sock = typeof SockJS === 'function' ? SockJS : (SockJS as any)?.default;
+        return new Sock(wsUrl);
+      },
       connectHeaders: {
         Authorization: `Bearer ${token}`,
       },

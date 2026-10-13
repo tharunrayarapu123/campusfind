@@ -35,11 +35,14 @@ apiClient.interceptors.request.use((config) => {
 // Response Interceptor: 401 redirection and clean error message extraction
 apiClient.interceptors.response.use(
   (response) => response,
-  (error: AxiosError<ApiResponse<unknown>>) => {
     if (error.response?.status === 401) {
+      const hadToken = !!getStoredToken();
       clearStoredToken();
       const currentPath = window.location.pathname;
-      if (currentPath !== '/login' && currentPath !== '/register') {
+      const isProtectedRoute = ['/post', '/matches', '/profile', '/notifications', '/admin'].some(
+        (prefix) => currentPath.startsWith(prefix)
+      );
+      if ((hadToken || isProtectedRoute) && currentPath !== '/login' && currentPath !== '/register') {
         window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
       }
     }
