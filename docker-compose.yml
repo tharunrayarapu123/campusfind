@@ -1,28 +1,42 @@
 services:
-  mysql:
+  mysqldb:
     image: mysql:8.0
     container_name: campusfind-mysql
-    restart: unless-stopped
-    command: >
-      --character-set-server=utf8mb4
-      --collation-server=utf8mb4_unicode_ci
-      --default-time-zone='+00:00'
+    restart: always
     environment:
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-campusfind}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
-      MYSQL_USER: ${MYSQL_USER:-campususer}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-campuspassword}
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: campusfind
+      MYSQL_USER: campususer
+      MYSQL_PASSWORD: campuspassword
     ports:
-      - "${MYSQL_PORT:-3306}:3306"
+      - "3306:3306"
     volumes:
-      - campusfind_mysql_data:/var/lib/mysql
+      - dbdata:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 30s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: campusfind-backend
+    restart: always
+    depends_on:
+      mysqldb:
+        condition: service_healthy
+    ports:
+      - "8081:8081"
+    environment:
+      PORT: 8081
+      SPRING_PROFILES_ACTIVE: dev
+      DB_URL: jdbc:mysql://mysqldb:3306/campusfind?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&characterEncoding=UTF-8
+      DB_USERNAME: campususer
+      DB_PASSWORD: campuspassword
+      FRONTEND_URL: http://localhost:5173
+      JWT_SECRET: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
 
 volumes:
-  campusfind_mysql_data:
-    name: campusfind_mysql_data
+  dbdata:

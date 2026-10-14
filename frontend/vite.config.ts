@@ -30,8 +30,15 @@ export default defineConfig({
         ],
       },
       workbox: {
-        navigateFallbackDenylist: [/^\/api\//, /^\/ws\//],
+        navigateFallbackDenylist: [/^\/api\//, /^\/ws\//, /^\/uploads\//],
         runtimeCaching: [
+          {
+            urlPattern: ({ url }: { url: URL }) =>
+              url.pathname.startsWith('/api') ||
+              url.pathname.startsWith('/ws') ||
+              url.pathname.startsWith('/uploads'),
+            handler: 'NetworkOnly',
+          },
           {
             urlPattern: /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\/.*/i,
             handler: 'CacheFirst',
@@ -52,6 +59,10 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
+        target: 'http://localhost:8081',
+        changeOrigin: true,
+      },
+      '/uploads': {
         target: 'http://localhost:8081',
         changeOrigin: true,
       },

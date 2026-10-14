@@ -45,7 +45,7 @@ export const getCategoryIcon = (category: ItemCategory) => {
 export const ItemCard: React.FC<ItemCardProps> = ({ item }) => {
   const firstName = item.owner?.fullName ? item.owner.fullName.split(' ')[0] : 'Student';
 
-  let relativeTime = 'recently';
+  let relativeTime: string;
   try {
     relativeTime = formatDistanceToNow(new Date(item.eventTime), { addSuffix: true });
   } catch {

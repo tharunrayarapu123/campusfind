@@ -62,6 +62,50 @@ On college campuses, hundreds of items are misplaced every week (watches, ID car
 
 ---
 
+## 🏗️ System Architecture
+
+```mermaid
+graph TD
+    subgraph Client["Client Tier"]
+        Browser["Desktop & Mobile Browsers"]
+        PWA["Installed PWA (Offline Shell)"]
+    end
+
+    subgraph Edge["Frontend Hosting (Vercel)"]
+        VercelSPA["Vercel Edge CDN (React 18 SPA)"]
+    end
+
+    subgraph Backend["Cloud Container (Render Docker)"]
+        Proxy["Render Reverse Proxy (HTTPS / WSS Termination)"]
+        SpringBoot["Spring Boot 3.3.4 (Java 21 JRE)"]
+        Security["Security Filter Chain & JWT Validation"]
+        Engine["100-Point Matching Engine"]
+        STOMP["Spring WebSocket & STOMP Broker"]
+    end
+
+    subgraph External["Cloud Infrastructure & APIs"]
+        DB[("TiDB Cloud Serverless (MySQL 8)")]
+        Cloudinary[("Cloudinary CDN (Encrypted Media)")]
+        Gemini["Google Gemini AI (Vision & Embeddings)"]
+        Mail["SMTP Server (Email Notifications)"]
+    end
+
+    Browser -->|HTTPS| VercelSPA
+    PWA -->|HTTPS| VercelSPA
+    VercelSPA -->|REST API| Proxy
+    Browser -->|WSS / SockJS| Proxy
+    Proxy --> SpringBoot
+    SpringBoot --> Security
+    Security --> Engine
+    Security --> STOMP
+    SpringBoot -->|HikariCP Connection Pool| DB
+    SpringBoot -->|Direct Upload & Optimization| Cloudinary
+    Engine -->|Vision Auto-tag & Vector Embeddings| Gemini
+    SpringBoot -->|Transactional Emails| Mail
+```
+
+---
+
 ## 📁 Repository Structure
 
 ```text
@@ -605,5 +649,131 @@ The second frontend phase completes the full user journey: from match discovery 
   - Offline status banner detecting network disconnections.
   - Dynamic route document titles.
 
+---
 
+## ⚙️ Environment Variables Reference
 
+### Backend Configuration (`backend`)
+
+| Variable Name | Required in Prod? | Default (Dev) | Description |
+|---|:---:|---|---|
+| `SPRING_PROFILES_ACTIVE` | Yes | `dev` | Active Spring profile (`dev` or `prod`). |
+| `PORT` | Yes | `8081` | Web server listening port (automatically set by Render / Heroku / Railway). |
+| `DB_URL` | Yes | `jdbc:mysql://localhost:3306/campusfind?...` | JDBC MySQL connection URL (e.g. TiDB Cloud with SSL parameters). |
+| `DB_USERNAME` | Yes | `campusfind_user` | Database username. |
+| `DB_PASSWORD` | Yes | `campusfind_pass` | Database user password. |
+| `JWT_SECRET` | Yes | `dev-secret-key-...` | HMAC-SHA256 secret key. **Refuses startup in prod if < 32 characters**. |
+| `CLOUDINARY_URL` | Yes (in prod) | *empty* | Format: `cloudinary://<api_key>:<api_secret>@<cloud_name>`. **Enforced in prod**; local storage fallback is disabled. |
+| `GEMINI_API_KEY` | Optional | *empty* | Google AI Studio API key for Gemini 1.5 Flash auto-tagging and embedding matching. |
+| `MAIL_USERNAME` | Optional | *empty* | SMTP username for outbound notification emails. |
+| `MAIL_PASSWORD` | Optional | *empty* | SMTP application password. |
+| `ALLOWED_EMAIL_DOMAIN`| No | `college.edu` | Restricts user registrations to this institutional email domain. |
+| `FRONTEND_URL` | Yes (in prod) | `http://localhost:5173` | Allowed CORS and WebSocket origins (comma-separated for multiple origins). |
+| `ADMIN_INITIAL_PASSWORD` | Yes (in prod) | *Admin@123 (dev only)* | Initial production password for `admin@college.edu`. Seeded/updated at startup. |
+
+### Frontend Configuration (`frontend`)
+
+| Variable Name | Required in Prod? | Default (Dev) | Description |
+|---|:---:|---|---|
+| `VITE_API_URL` | Yes (in prod) | *empty (proxied)* | Production backend URL (e.g. `https://campusfind-backend.onrender.com`). Single source of truth for REST and WSS. |
+
+---
+
+## 🌐 Production Cloud Deployment Guide
+
+Follow this guide to deploy CampusFind completely on free-tier cloud infrastructure.
+
+### Step 1: Cloud Database Setup (TiDB Cloud Serverless)
+1. Go to [TiDB Cloud](https://tidbcloud.com/) and register a free account.
+2. Click **Create Cluster** and select **Serverless (Free Tier)**.
+3. Choose your nearest cloud region (e.g., `us-east-1` or `ap-southeast-1`).
+4. Once provisioned (approx. 20 seconds), navigate to **Connect** and select **Connect with General Client**.
+5. Copy your connection details:
+   - Hostname (e.g., `gateway01.us-east-1.prod.aws.tidbcloud.com`)
+   - Port (typically `4000`)
+   - User (e.g., `xxxx.root`)
+   - Password (generate and store securely)
+   - Database name: `campusfind` (create it via the SQL editor: `CREATE DATABASE campusfind;`)
+6. Construct your production JDBC URL:
+   ```text
+   jdbc:mysql://<HOST>:4000/campusfind?sslMode=VERIFY_IDENTITY&enabledTLSProtocols=TLSv1.2,TLSv1.3&serverTimezone=UTC&characterEncoding=utf8mb4
+   ```
+
+### Step 2: Backend Deployment on Render (Docker Web Service)
+1. Sign up or log into [Render](https://render.com/).
+2. Click **New +** > **Web Service**.
+3. Connect your GitHub repository: `https://github.com/<YOUR_USERNAME>/campusfind`.
+4. Configure service details:
+   - **Name:** `campusfind-backend`
+   - **Region:** Same region as your database if possible
+   - **Root Directory:** `backend`
+   - **Runtime:** `Docker`
+   - **Instance Type:** `Free`
+5. In the **Health Check Path** field, enter:
+   ```text
+   /actuator/health
+   ```
+6. Add the following **Environment Variables** in the Render dashboard:
+   - `SPRING_PROFILES_ACTIVE`: `prod`
+   - `DB_URL`: `<YOUR_TIDB_JDBC_URL>`
+   - `DB_USERNAME`: `<YOUR_TIDB_USERNAME>`
+   - `DB_PASSWORD`: `<YOUR_TIDB_PASSWORD>`
+   - `JWT_SECRET`: `<GENERATE_A_64_CHAR_HEX_OR_BASE64_KEY>`
+   - `CLOUDINARY_URL`: `cloudinary://<api_key>:<api_secret>@<cloud_name>`
+   - `GEMINI_API_KEY`: `<YOUR_GEMINI_KEY>` (Optional)
+   - `ALLOWED_EMAIL_DOMAIN`: `college.edu`
+   - `ADMIN_INITIAL_PASSWORD`: `<STRONG_ADMIN_PASSWORD>`
+   - `FRONTEND_URL`: Temporary placeholder `http://localhost:5173` (update in Step 4)
+7. Click **Create Web Service**. Render builds the multi-stage Dockerfile and runs health checks.
+   > [!NOTE]
+   > Free Render instances spin down after inactivity. The first wake-up request may take ~30–50 seconds.
+
+### Step 3: Frontend Deployment on Vercel
+1. Log into [Vercel](https://vercel.com/) and click **Add New...** > **Project**.
+2. Import your GitHub repository (`campusfind`).
+3. Set the project configuration:
+   - **Framework Preset:** `Vite`
+   - **Root Directory:** `frontend`
+   - **Build Command:** `npm run build`
+   - **Output Directory:** `dist`
+4. In **Environment Variables**, add:
+   - `VITE_API_URL`: Your live Render backend URL (e.g. `https://campusfind-backend.onrender.com` without trailing slash).
+5. Click **Deploy**. Vercel will build and deploy the SPA with automatic HTTPS and PWA caching rules.
+
+### Step 4: Final Handshake
+1. Copy your live Vercel frontend URL (e.g. `https://campusfind.vercel.app`).
+2. Go back to Render Dashboard &rarr; `campusfind-backend` &rarr; **Environment**.
+3. Update `FRONTEND_URL` to your Vercel URL: `https://campusfind.vercel.app`.
+4. Save changes. Render will automatically redeploy the backend with proper CORS and WebSocket origin authorization.
+
+---
+
+## 📸 Screenshots & Previews
+
+| Discovery & Home Feed | AI Photo Auto-Fill & Claim |
+|:---:|:---:|
+| *(Add home feed screenshot here)* | *(Add post creation screenshot here)* |
+
+| Real-time Matched Chat | Interactive Campus Map |
+|:---:|:---:|
+| *(Add chat interface screenshot here)* | *(Add map pin exploration screenshot here)* |
+
+| Student Karma & Leaderboard | Campus Admin Governance |
+|:---:|:---:|
+| *(Add leaderboard podium screenshot here)* | *(Add admin analytics screenshot here)* |
+
+---
+
+## 🛡️ Security & Disclosures
+
+Security is a primary design goal of CampusFind:
+- **No Leaked Phone Numbers:** Contact details are never revealed to other students; all communication is mediated through verified challenge-based STOMP chat.
+- **Fail-Fast Defense:** Production mode strictly refuses to start if `JWT_SECRET` is insecure (< 32 chars) or `CLOUDINARY_URL` is omitted.
+- **Privacy Shield:** Visual analysis automatically flags sensitive items (photo IDs, credit cards, faces) before publishing.
+- For vulnerability reports or security disclosures, please see [SECURITY.md](file:///c:/campusfind/SECURITY.md).
+
+---
+
+## 📄 License
+
+This project is licensed under the terms of the MIT License. See [LICENSE](file:///c:/campusfind/LICENSE) for details.

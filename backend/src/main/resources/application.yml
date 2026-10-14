@@ -17,6 +17,9 @@ spring:
 
 server:
   port: ${PORT:8081}
+  error:
+    include-stacktrace: never
+    include-message: never
 
 # Application & Feature Custom Properties
 app:
@@ -25,6 +28,7 @@ app:
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
   auth:
     allowed-email-domain: ${ALLOWED_EMAIL_DOMAIN:college.edu}
+    admin-initial-password: ${ADMIN_INITIAL_PASSWORD:}
   cloudinary:
     url: ${CLOUDINARY_URL:}
   cors:
@@ -148,6 +152,12 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+      idle-timeout: 30000
+      max-lifetime: 1800000
+      connection-timeout: 20000
   jpa:
     database-platform: org.hibernate.dialect.MySQLDialect
     hibernate:
@@ -163,3 +173,18 @@ spring:
     baseline-on-migrate: true
     baseline-version: "0"
     locations: classpath:db/migration
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: when_authorized

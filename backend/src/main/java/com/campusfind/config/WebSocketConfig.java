@@ -22,11 +22,27 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         config.setApplicationDestinationPrefixes("/app");
     }
 
+    @org.springframework.beans.factory.annotation.Value("${app.cors.frontend-url:http://localhost:5173}")
+    private String frontendUrl;
+
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
+        String[] origins = java.util.Arrays.stream(frontendUrl.split(","))
+                .map(String::trim)
+                .map(url -> url.replaceAll("/+$", ""))
+                .filter(url -> !url.isEmpty())
+                .toArray(String[]::new);
+
+        String[] allowedPatterns = (origins.length > 0) ? origins : new String[]{"*"};
+
+        // SockJS fallback endpoint (supports HTTPS behind proxies)
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("*")
+                .setAllowedOriginPatterns(allowedPatterns)
                 .withSockJS();
+
+        // Direct WebSocket endpoint
+        registry.addEndpoint("/ws")
+                .setAllowedOriginPatterns(allowedPatterns);
     }
 
     @Override

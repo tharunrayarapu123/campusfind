@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Client, IMessage } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
-import { getStoredToken } from '../api/client';
+import { getStoredToken, getApiBaseUrl } from '../api/client';
 import { chatApi } from '../api/chat';
 import type { ChatMessageDto, SendChatMessagePayload } from '../types';
 import { toast } from 'sonner';
@@ -46,10 +46,13 @@ export function useMatchChat({ matchId, onNewMessage }: UseMatchChatProps) {
     setConnectionState('CONNECTING');
     setErrorMessage(null);
 
-    // Backend /ws URL
-    const wsUrl = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/ws` : '/ws';
+    // Backend /ws URL derived from VITE_API_URL
+    const apiBase = getApiBaseUrl();
+    const wsUrl = apiBase ? `${apiBase}/ws` : `${window.location.origin}/ws`;
+    const directWsUrl = wsUrl.replace(/^http/, 'ws');
 
     const client = new Client({
+      brokerURL: directWsUrl.startsWith('ws') ? directWsUrl : undefined,
       webSocketFactory: () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const Sock = typeof SockJS === 'function' ? SockJS : (SockJS as any)?.default;

@@ -1,0 +1,8 @@
+target/
+*.log
+uploads/
+.git/
+.idea/
+*.iml
+.vscode/
+.DS_Store

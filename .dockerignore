@@ -1,0 +1,13 @@
+target/
+**/target/
+node_modules/
+**/node_modules/
+uploads/
+**/uploads/
+.git/
+.idea/
+*.iml
+.vscode/
+.DS_Store
+*.env*
+!*.env.example

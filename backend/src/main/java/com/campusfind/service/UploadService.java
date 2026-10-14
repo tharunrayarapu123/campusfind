@@ -28,17 +28,29 @@ public class UploadService {
     private String cloudinaryUrl;
 
     private Cloudinary cloudinary;
+    private final org.springframework.core.env.Environment environment;
+
+    public UploadService(org.springframework.core.env.Environment environment) {
+        this.environment = environment;
+    }
 
     @PostConstruct
     public void init() {
+        boolean isProd = java.util.Arrays.asList(environment.getActiveProfiles()).contains("prod");
         if (cloudinaryUrl != null && !cloudinaryUrl.trim().isEmpty() && cloudinaryUrl.startsWith("cloudinary://")) {
             try {
                 this.cloudinary = new Cloudinary(cloudinaryUrl);
                 log.info("Cloudinary image upload service initialized successfully.");
             } catch (Exception e) {
+                if (isProd) {
+                    throw new IllegalStateException("CRITICAL CONFIG ERROR: Failed to initialize Cloudinary in prod profile: " + e.getMessage(), e);
+                }
                 log.warn("Failed to initialize Cloudinary with provided URL. Will fallback to local storage: {}", e.getMessage());
             }
         } else {
+            if (isProd) {
+                throw new IllegalStateException("CRITICAL CONFIG ERROR: In production profile 'prod', CLOUDINARY_URL is missing or invalid! Local file storage is disabled in production.");
+            }
             log.warn("*******************************************************************************");
             log.warn("WARNING: CLOUDINARY_URL is not configured. Falling back to local /uploads storage.");
             log.warn("Uploaded images will be stored locally and served via /uploads/**.");
@@ -67,6 +79,8 @@ public class UploadService {
             throw new ApiException("Invalid image format. Only authentic JPEG, PNG, and WebP images are permitted", HttpStatus.BAD_REQUEST);
         }
 
+        boolean isProd = java.util.Arrays.asList(environment.getActiveProfiles()).contains("prod");
+
         // 1. Upload to Cloudinary if configured
         if (this.cloudinary != null) {
             try {
@@ -81,11 +95,18 @@ public class UploadService {
                         .size(file.getSize())
                         .build();
             } catch (Exception e) {
-                log.error("Cloudinary upload failed, falling back to local file storage: {}", e.getMessage());
+                log.error("Cloudinary upload failed: {}", e.getMessage());
+                if (isProd) {
+                    throw new ApiException("Image upload to Cloudinary failed: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+                }
             }
         }
 
-        // 2. Fallback: Save to local /uploads folder
+        if (isProd) {
+            throw new ApiException("Local storage is disabled in production profile. Cloudinary must be configured.", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+
+        // 2. Fallback (Development & Standalone only): Save to local /uploads folder
         try {
             Path uploadDir = Paths.get("uploads");
             if (!Files.exists(uploadDir)) {

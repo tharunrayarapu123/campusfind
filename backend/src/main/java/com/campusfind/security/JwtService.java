@@ -31,10 +31,19 @@ public class JwtService {
     private long jwtExpirationMs; // 24 hours default
 
     private SecretKey signingKey;
+    private final org.springframework.core.env.Environment environment;
+
+    public JwtService(org.springframework.core.env.Environment environment) {
+        this.environment = environment;
+    }
 
     @PostConstruct
     public void init() {
+        boolean isProd = java.util.Arrays.asList(environment.getActiveProfiles()).contains("prod");
         if (jwtSecret == null || jwtSecret.trim().isEmpty() || jwtSecret.trim().length() < 32) {
+            if (isProd) {
+                throw new IllegalStateException("CRITICAL SECURITY VIOLATION: In production profile 'prod', JWT_SECRET environment variable is missing or shorter than 32 characters! The application refuses to start.");
+            }
             log.warn("*******************************************************************************");
             log.warn("SECURITY WARNING: JWT_SECRET environment variable is missing or shorter than 32 chars!");
             log.warn("Falling back to clearly marked DEVELOPMENT-ONLY secret. DO NOT USE IN PRODUCTION!");

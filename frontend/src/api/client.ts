@@ -1,5 +1,4 @@
-import axios, { AxiosError } from 'axios';
-import type { ApiResponse } from '../types';
+import axios from 'axios';
 
 const TOKEN_KEY = 'campusfind_token';
 
@@ -16,8 +15,13 @@ export const clearStoredToken = (): void => {
   localStorage.removeItem('campusfind_user');
 };
 
+export const getApiBaseUrl = (): string => {
+  const url = import.meta.env.VITE_API_URL;
+  return url ? url.replace(/\/+$/, '') : '';
+};
+
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api/v1` : '/api/v1',
+  baseURL: getApiBaseUrl() ? `${getApiBaseUrl()}/api/v1` : '/api/v1',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -35,6 +39,7 @@ apiClient.interceptors.request.use((config) => {
 // Response Interceptor: 401 redirection and clean error message extraction
 apiClient.interceptors.response.use(
   (response) => response,
+  (error) => {
     if (error.response?.status === 401) {
       const hadToken = !!getStoredToken();
       clearStoredToken();

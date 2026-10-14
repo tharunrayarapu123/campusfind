@@ -72,7 +72,6 @@ export const ProfilePage: React.FC = () => {
   const handleInstallPwa = async () => {
     if (!installPrompt) return;
     installPrompt.prompt();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const choice = await installPrompt.userChoice;
     if (choice.outcome === 'accepted') {
       toast.success('CampusFind installed to your device!');
