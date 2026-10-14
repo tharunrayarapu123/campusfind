@@ -2,6 +2,14 @@
 
 > A modern, privacy-first college lost and found platform that matches lost items using location, category, timestamps, and AI photo analysis, enabling secure in-app connections between finder and owner.
 
+[![Live App](https://img.shields.io/badge/Live%20App-Vercel-black?style=for-the-badge&logo=vercel)](https://campusfind-bice.vercel.app/)
+[![GitHub Repo](https://img.shields.io/badge/GitHub-Repository-181717?style=for-the-badge&logo=github)](https://github.com/tharunrayarapu123/campusfind)
+[![Release](https://img.shields.io/badge/Release-v1.0.0-blue?style=for-the-badge)](https://github.com/tharunrayarapu123/campusfind/releases/tag/v1.0.0)
+
+- **🌐 Live Production URL:** [https://campusfind-bice.vercel.app/](https://campusfind-bice.vercel.app/)
+- **🐙 GitHub Repository:** [https://github.com/tharunrayarapu123/campusfind](https://github.com/tharunrayarapu123/campusfind)
+- **☁️ Cloud Database:** TiDB Cloud Serverless (Singapore AWS `ap-southeast-1`)
+
 ---
 
 ## 🎯 The Problem
