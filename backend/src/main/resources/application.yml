@@ -97,7 +97,12 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       initialization-fail-timeout: -1
-      connection-timeout: 3000
+      connection-timeout: 20000
+      minimum-idle: 1
+      maximum-pool-size: 5
+      idle-timeout: 30000
+      max-lifetime: 1800000
+      keepalive-time: 30000
   jpa:
     database-platform: org.hibernate.dialect.MySQLDialect
     hibernate:
