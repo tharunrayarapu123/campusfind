@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: campusfind-backend
+    runtime: docker
+    dockerContext: backend
+    dockerfilePath: backend/Dockerfile
+    region: singapore
+    plan: free
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DB_URL
+        value: jdbc:mysql://gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000/campusfind?sslMode=VERIFY_IDENTITY&enabledTLSProtocols=TLSv1.2,TLSv1.3&serverTimezone=UTC&characterEncoding=UTF-8
+      - key: DB_USERNAME
+        value: 2TZMMkSm7uf4fyf.root
+      - key: DB_PASSWORD
+        value: xRNuabOmst7m1QDY
+      - key: JWT_SECRET
+        value: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+      - key: ADMIN_INITIAL_PASSWORD
+        value: Admin@CampusFind2026
+      - key: ALLOWED_EMAIL_DOMAIN
+        value: college.edu
+      - key: FRONTEND_URL
+        value: http://localhost:5173
+      - key: CLOUDINARY_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
